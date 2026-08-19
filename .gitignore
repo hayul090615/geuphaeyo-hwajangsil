@@ -1,0 +1,16 @@
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+*.log.*
+
+# Local environment files (keep an .env.example if one is added)
+.env
+.env.*
+!.env.example
+
+# JavaScript/Vite build artifacts and dependencies
+node_modules/
+dist/

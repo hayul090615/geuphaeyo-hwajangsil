@@ -1,0 +1,2 @@
+import type { Toilet } from '../types/toilet';
+export default function ToiletCard({toilet}:{toilet:Toilet}) { return <article className="toilet-card"><div className="card-heading"><h3>{toilet.name}</h3><span className="distance">{toilet.distance}</span></div><p className="address">{toilet.address}</p><div className="card-tags"><span className={toilet.openAllDay?'tag tag-open':'tag'}>{toilet.openAllDay?'24시간':'운영시간 확인'}</span>{toilet.accessible&&<span className="tag">♿ 접근 가능</span>}</div></article>; }

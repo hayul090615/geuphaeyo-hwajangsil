@@ -11,6 +11,7 @@ React와 TypeScript를 기반으로 제작하는 프론트엔드 프로젝트입
 │
 ├── src/                          # React 소스 코드
 │   ├── components/               # 재사용 가능한 React 컴포넌트
+------------- └── KakaoMap.tsx
 │   ├── pages/                    # 페이지 단위 컴포넌트
 │   ├── services/                 # API 및 외부 서비스 관련 코드
 │   ├── styles/                   # CSS 및 스타일 관련 코드

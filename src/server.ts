@@ -7,55 +7,76 @@ const port = Number(process.env.PORT ?? 3000);
 app.use(express.json());
 
 type ToiletInput = Record<string, string | number | boolean | null>;
+type InputMode = 'create' | 'update';
+
+const maxBigInt = 9_223_372_036_854_775_807n;
 
 function hasOwn(object: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(object, key);
 }
 
+function isValidToiletId(id: string): boolean {
+  return /^[1-9]\d*$/.test(id) && BigInt(id) <= maxBigInt;
+}
+
 function parseToiletInput(
-  body: unknown
+  body: unknown,
+  mode: InputMode = 'create'
 ): { data: ToiletInput } | { error: string } {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return { error: 'Request body must be a JSON object' };
   }
 
   const input = body as Record<string, unknown>;
-  const name = typeof input.name === 'string' ? input.name.trim() : '';
-  const address =
-    typeof input.address === 'string' ? input.address.trim() : '';
+  const data: ToiletInput = {};
 
-  if (name === '' || address === '') {
-    return { error: 'name and address are required' };
+  for (const column of [
+    { name: 'name', maxLength: 100 },
+    { name: 'address', maxLength: 255 }
+  ] as const) {
+    if (!hasOwn(input, column.name)) {
+      if (mode === 'create') {
+        return { error: 'name and address are required' };
+      }
+      continue;
+    }
+
+    const value = input[column.name];
+    if (typeof value !== 'string' || value.trim() === '') {
+      return { error: `${column.name} must be a non-empty string` };
+    }
+
+    const trimmedValue = value.trim();
+    if (trimmedValue.length > column.maxLength) {
+      return { error: `${column.name} is too long` };
+    }
+    data[column.name] = trimmedValue;
   }
 
-  if (name.length > 100 || address.length > 255) {
-    return { error: 'name or address is too long' };
-  }
+  for (const column of [
+    { name: 'latitude', min: -90, max: 90 },
+    { name: 'longitude', min: -180, max: 180 }
+  ] as const) {
+    if (!hasOwn(input, column.name)) {
+      if (mode === 'create') {
+        return { error: `${column.name} is required` };
+      }
+      continue;
+    }
 
-  if (
-    typeof input.latitude !== 'number' ||
-    !Number.isFinite(input.latitude) ||
-    input.latitude < -90 ||
-    input.latitude > 90
-  ) {
-    return { error: 'latitude must be a number between -90 and 90' };
+    const value = input[column.name];
+    if (
+      typeof value !== 'number' ||
+      !Number.isFinite(value) ||
+      value < column.min ||
+      value > column.max
+    ) {
+      return {
+        error: `${column.name} must be a number between ${column.min} and ${column.max}`
+      };
+    }
+    data[column.name] = value;
   }
-
-  if (
-    typeof input.longitude !== 'number' ||
-    !Number.isFinite(input.longitude) ||
-    input.longitude < -180 ||
-    input.longitude > 180
-  ) {
-    return { error: 'longitude must be a number between -180 and 180' };
-  }
-
-  const data: ToiletInput = {
-    name,
-    address,
-    latitude: input.latitude,
-    longitude: input.longitude
-  };
   const booleanColumns = [
     'open_24h',
     'accessible',
@@ -143,9 +164,8 @@ app.get('/toilets', async (_request, response) => {
 
 app.get('/toilets/:id', async (request, response) => {
   const { id } = request.params;
-  const maxBigInt = 9_223_372_036_854_775_807n;
 
-  if (!/^[1-9]\d*$/.test(id) || BigInt(id) > maxBigInt) {
+  if (!isValidToiletId(id)) {
     response.status(400).json({ message: 'Invalid toilet id' });
     return;
   }
@@ -201,6 +221,67 @@ app.post('/toilets', async (request, response) => {
     }
 
     console.error('Failed to create toilet:', error);
+    response.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.patch('/toilets/:id', async (request, response) => {
+  const { id } = request.params;
+
+  if (!isValidToiletId(id)) {
+    response.status(400).json({ message: 'Invalid toilet id' });
+    return;
+  }
+
+  const parsedInput = parseToiletInput(request.body, 'update');
+
+  if ('error' in parsedInput) {
+    response.status(400).json({ message: parsedInput.error });
+    return;
+  }
+
+  const columns = Object.keys(parsedInput.data);
+
+  if (columns.length === 0) {
+    response.status(400).json({ message: 'No fields to update' });
+    return;
+  }
+
+  const values = Object.values(parsedInput.data);
+  const assignments = columns.map(
+    (column, index) => `${column} = $${index + 1}`
+  );
+  values.push(id);
+
+  const query = `
+    UPDATE public.toilets
+    SET ${assignments.join(', ')}, updated_at = CURRENT_TIMESTAMP
+    WHERE id = $${values.length}
+    RETURNING *;
+  `;
+
+  try {
+    const result = await pool.query(query, values);
+    const toilet = result.rows[0];
+
+    if (toilet === undefined) {
+      response.status(404).json({ message: 'Toilet not found' });
+      return;
+    }
+
+    response.json(toilet);
+  } catch (error) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === '23505'
+    ) {
+      response.status(409).json({ message: 'Toilet already exists' });
+      return;
+    }
+
+    console.error('Failed to update toilet:', error);
     response.status(500).json({ message: 'Internal server error' });
   }
 });

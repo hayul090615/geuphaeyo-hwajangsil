@@ -1,0 +1,1 @@
+export default function Header() { return <header className="site-header"><a className="brand" href="/">급해요<span>화장실</span></a><button className="location-button" type="button">⌖ 현재 위치</button></header>; }

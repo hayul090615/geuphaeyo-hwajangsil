@@ -4,37 +4,43 @@ React와 TypeScript를 기반으로 제작하는 프론트엔드 프로젝트입
 
 ## 📁 프로젝트 구조
 
-```text
 프로젝트/
 ├── dist/                         # 빌드 결과물
 ├── node_modules/                 # 설치된 npm 패키지
 │
 ├── src/                          # React 소스 코드
 │   ├── components/               # 재사용 가능한 React 컴포넌트
-------------- └── KakaoMap.tsx
-------------- └── vite.config.ts                # Vite 설정
+│   │   └── KakaoMap.tsx
+│   │
 │   ├── pages/                    # 페이지 단위 컴포넌트
+│   │   ├── Login.tsx             # 로그인 페이지
+│   │   ├── Signup.tsx            # 회원가입 페이지
+│   │   └── Home.tsx              # 메인 페이지
+│   │
 │   ├── services/                 # API 및 외부 서비스 관련 코드
 │   ├── styles/                   # CSS 및 스타일 관련 코드
 │   ├── types/                    # TypeScript 타입 정의
+│   │
 │   ├── App.tsx                   # 메인 React 애플리케이션
-│   └── main.tsx                  # React 앱 진입점
+│   ├── main.tsx                  # React 앱 진입점
+│   └── vite-env.d.ts             # Vite 환경변수 타입 설정
 │
+├── .env                          # 카카오 API 키 등 환경변수
 ├── .gitignore                    # Git에서 제외할 파일 설정
 ├── AGENTS.md                     # AI 개발 및 프로젝트 작업 규칙
 ├── index.html                    # 웹 페이지 기본 HTML
-├── main.js                       # JavaScript 관련 파일
+├── main.js                       # 기존 JavaScript 파일
 ├── package.json                  # 프로젝트 정보 및 npm 패키지 관리
 ├── package-lock.json             # 설치된 패키지 버전 기록
 ├── PROJECT_NOTES.md              # 프로젝트 개발 및 협업 메모
-├── style.css                     # 전역 CSS 스타일
+├── style.css                     # 기존 전역 CSS 스타일
 │
 ├── tsconfig.app.json             # 애플리케이션 TypeScript 설정
 ├── tsconfig.app.tsbuildinfo      # TypeScript 앱 빌드 정보
 ├── tsconfig.json                 # TypeScript 기본 설정
 ├── tsconfig.node.json            # Node 환경 TypeScript 설정
 ├── tsconfig.node.tsbuildinfo     # Node TypeScript 빌드 정보
-```
+└── vite.config.ts                # Vite 설정
 
 ## 🛠️ 사용 기술
 

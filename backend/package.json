@@ -1,0 +1,34 @@
+{
+  "name": "geuphaeyo-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "급해요 화장실 찾기 서비스 backend foundation",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx watch src/server.ts",
+    "db:test": "tsx src/db/test-connection.ts",
+    "db:create": "psql -h localhost -U postgres -d postgres -f sql/001_create_database.sql",
+    "db:schema": "psql -h localhost -U postgres -d geuphaeyo -f sql/002_create_tables.sql",
+    "db:seed": "psql -h localhost -U postgres -d geuphaeyo -f sql/003_seed_restrooms.sql",
+    "db:migrate": "psql -h localhost -U postgres -d geuphaeyo -f sql/004_migrate_to_toilets.sql",
+    "db:setup": "npm run db:create && npm run db:schema && npm run db:seed",
+    "start": "node dist/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.2.0",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}

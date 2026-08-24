@@ -1,0 +1,56 @@
+INSERT INTO public.toilets (
+  name,
+  address,
+  latitude,
+  longitude,
+  open_24h,
+  opening_hours,
+  accessible,
+  password_required,
+  stairs_count,
+  distance_meters,
+  male_toilet_available,
+  female_toilet_available,
+  male_toilet_count,
+  female_toilet_count,
+  emergency_bell_available,
+  diaper_changing_table_available
+)
+VALUES
+  (
+    '급해요 테스트 화장실 1',
+    '서울특별시 중구 세종대로 110',
+    37.566295,
+    126.977945,
+    true,
+    '24시간',
+    true,
+    false,
+    0,
+    250.00,
+    true,
+    true,
+    3,
+    4,
+    true,
+    true
+  ),
+  (
+    '급해요 테스트 화장실 2',
+    '서울특별시 종로구 종로 1',
+    37.570377,
+    126.981642,
+    false,
+    '평일 09:00-18:00',
+    true,
+    true,
+    12,
+    640.50,
+    true,
+    true,
+    2,
+    2,
+    false,
+    false
+  )
+ON CONFLICT (name, address) DO NOTHING;

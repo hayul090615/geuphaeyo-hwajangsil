@@ -9,6 +9,7 @@ import type { Toilet } from '../types/toilet';
 export default function Home() {
   const [query, setQuery] = useState('');
   const [toilets, setToilets] = useState<Toilet[]>([]);
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   useEffect(() => {
     void getNearbyToilets().then(setToilets);
@@ -21,7 +22,7 @@ export default function Home() {
 
   return (
     <div className="app-shell">
-      <Header />
+      <Header onMapOpen={() => setIsMapOpen(true)} />
       <main>
         <section className="hero">
           <p className="eyebrow">급할 때, 가까운 곳부터</p>
@@ -47,22 +48,34 @@ export default function Home() {
           </ol>
         </section>
 
-        <section className="content-grid">
-          <div>
-            <div className="section-title">
-              <div>
-                <h2>주변 화장실</h2>
-                <p>거리와 이용 정보를 확인한 뒤 선택하세요.</p>
-              </div>
-              <span>{filtered.length}곳</span>
+        <section className="toilet-section">
+          <div className="section-title">
+            <div>
+              <h2>주변 화장실</h2>
+              <p>거리와 이용 정보를 확인한 뒤 선택하세요.</p>
             </div>
-            <div className="toilet-list">
-              {filtered.map((toilet) => <ToiletCard key={toilet.id} toilet={toilet} />)}
-            </div>
+            <span>{filtered.length}곳</span>
           </div>
-          <Map toilets={filtered} />
+          <div className="toilet-list">
+            {filtered.map((toilet) => <ToiletCard key={toilet.id} toilet={toilet} />)}
+          </div>
         </section>
       </main>
+
+      {isMapOpen && (
+        <div className="map-modal-backdrop" onClick={() => setIsMapOpen(false)}>
+          <section className="map-modal" role="dialog" aria-modal="true" aria-labelledby="map-modal-title" onClick={(event) => event.stopPropagation()}>
+            <div className="map-modal-header">
+              <div>
+                <p>지도에서 확인하기</p>
+                <h2 id="map-modal-title">주변 화장실 위치</h2>
+              </div>
+              <button type="button" onClick={() => setIsMapOpen(false)} aria-label="지도 닫기">×</button>
+            </div>
+            <Map toilets={filtered} />
+          </section>
+        </div>
+      )}
     </div>
   );
 }

@@ -60,7 +60,25 @@ export default function Home() {
             {filtered.map((toilet) => <ToiletCard key={toilet.id} toilet={toilet} />)}
           </div>
         </section>
+
+        <section className="support-section" aria-labelledby="support-title">
+          <div className="support-heading">
+            <p>이용 전 확인하세요</p>
+            <h2 id="support-title">급한 순간에도 필요한 정보는 놓치지 않도록</h2>
+            <span>목적지에 도착하기 전, 아래 정보를 한 번 더 확인해 보세요.</span>
+          </div>
+          <ul className="support-list">
+            <li><strong>운영시간</strong><span>시설별 운영시간은 상황에 따라 달라질 수 있어요.</span></li>
+            <li><strong>접근성 정보</strong><span>휠체어 이용 등 필요한 시설 정보를 미리 확인하세요.</span></li>
+            <li><strong>현장 이용</strong><span>청소나 점검 중일 수 있으니 도착 후에도 확인해 주세요.</span></li>
+          </ul>
+        </section>
       </main>
+
+      <footer className="site-footer">
+        <p><strong>급해요화장실</strong> · 가까운 화장실 정보를 빠르게 찾는 서비스</p>
+        <span>필요한 순간에, 필요한 정보만.</span>
+      </footer>
 
       {isMapOpen && (
         <div className="map-modal-backdrop" onClick={() => setIsMapOpen(false)}>

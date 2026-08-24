@@ -183,3 +183,52 @@ git push
 ## 📝 참고
 
 프로젝트가 발전하면서 새로운 컴포넌트와 페이지가 추가될 수 있으며, 프로젝트 구조가 변경될 경우 README도 함께 업데이트합니다.
+
+## 백엔드 통합
+
+백엔드 코드는 프론트엔드 실행 코드와 충돌하지 않도록 `backend/` 폴더에 분리되어 있습니다.
+
+```text
+backend/
+├── src/
+│   ├── config/env.ts          # 데이터베이스 환경변수 설정
+│   ├── db/pool.ts             # PostgreSQL 연결 풀
+│   ├── db/test-connection.ts  # DB 연결 확인
+│   └── server.ts              # Express REST API 서버
+├── sql/                       # 데이터베이스 생성·테이블·시드·마이그레이션 SQL
+├── .env.example               # 백엔드 환경변수 예시
+├── package.json               # 백엔드 의존성 및 실행 명령
+└── tsconfig.json              # 백엔드 TypeScript 설정
+```
+
+### 백엔드 기술
+
+- Node.js, Express, TypeScript
+- PostgreSQL, `pg`
+- `dotenv`
+
+### 제공 API
+
+| Method | Endpoint | 설명 |
+| --- | --- | --- |
+| `GET` | `/toilets` | 전체 화장실 목록 조회 |
+| `GET` | `/toilets/:id` | 화장실 상세 조회 |
+| `POST` | `/toilets` | 화장실 등록 |
+| `PATCH` | `/toilets/:id` | 화장실 정보 수정 |
+| `DELETE` | `/toilets/:id` | 화장실 삭제 |
+
+### 백엔드 실행
+
+`backend/.env.example`을 참고해 `backend/.env`를 로컬에서만 만들고, PostgreSQL 연결 정보를 설정합니다. `.env` 파일은 Git에 올리지 않습니다.
+
+```bash
+cd backend
+npm ci
+npm run dev
+```
+
+서버 기본 포트는 `3000`이며, 배포 환경에서는 `PORT` 환경변수를 사용합니다.
+
+### 프론트엔드와 백엔드 연결
+
+프론트엔드는 루트의 React/Vite 프로젝트로 실행하고, 백엔드는 `backend/`에서 별도 실행합니다. 실제 API 연결 시 프론트엔드의 `src/services/`에서 백엔드 REST API를 호출하며, PostgreSQL에는 프론트엔드가 직접 접근하지 않습니다.

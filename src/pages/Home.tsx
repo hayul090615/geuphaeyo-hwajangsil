@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Header from '../components/Header';
-import Map from '../components/Map';
+import KakaoMap from '../components/KakaoMap';
 import SearchBar from '../components/SearchBar';
 import ToiletCard from '../components/ToiletCard';
 import { getNearbyToilets } from '../services/toiletService';
@@ -72,7 +72,7 @@ export default function Home() {
               </div>
               <button type="button" onClick={() => setIsMapOpen(false)} aria-label="지도 닫기">×</button>
             </div>
-            <Map toilets={filtered} />
+            <KakaoMap />
           </section>
         </div>
       )}

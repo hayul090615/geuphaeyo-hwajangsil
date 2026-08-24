@@ -286,6 +286,32 @@ app.patch('/toilets/:id', async (request, response) => {
   }
 });
 
+app.delete('/toilets/:id', async (request, response) => {
+  const { id } = request.params;
+
+  if (!isValidToiletId(id)) {
+    response.status(400).json({ message: 'Invalid toilet id' });
+    return;
+  }
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM public.toilets WHERE id = $1 RETURNING id;',
+      [id]
+    );
+
+    if (result.rows[0] === undefined) {
+      response.status(404).json({ message: 'Toilet not found' });
+      return;
+    }
+
+    response.status(204).send();
+  } catch (error) {
+    console.error('Failed to delete toilet:', error);
+    response.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 app.use((error: unknown, _request: express.Request, response: express.Response, next: express.NextFunction) => {
   if (
     error instanceof SyntaxError &&

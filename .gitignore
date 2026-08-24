@@ -14,3 +14,4 @@ Thumbs.db
 # JavaScript/Vite build artifacts and dependencies
 node_modules/
 dist/
+.vercel

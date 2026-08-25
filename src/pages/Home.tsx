@@ -194,7 +194,7 @@ export default function Home() {
 
           <section className="toilet-section">
             <div className="section-title">
-              <div><h2>주변 화장실</h2><p>거리와 이용 정보를 확인한 뒤 선택하세요.</p></div>
+              <div><h2>주변 은평구 화장실</h2><p>세명컴퓨터고등학교 주변의 거리와 이용 정보를 확인하세요.</p></div>
               <span>{filtered.length}곳</span>
             </div>
             <div className="toilet-list">{filtered.map((toilet) => <ToiletCard key={toilet.id} toilet={toilet} />)}</div>

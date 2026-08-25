@@ -1,11 +1,21 @@
 import express from 'express';
 import { OAuth2Client } from 'google-auth-library';
+import nodemailer from 'nodemailer';
 import { pool } from './db/pool';
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClient = new OAuth2Client(googleClientId);
+const requestRecipients = ['hayul9888@gmail.com', 'sg8111320@gmail.com'];
+const mailTransport = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD
+  ? nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT ?? 587),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
+    })
+  : null;
 
 app.use(express.json());
 app.use((_request, response, next) => {
@@ -45,6 +55,30 @@ app.post('/requests', async (request, response) => {
       'INSERT INTO public.service_requests (category, message, reply_email) VALUES ($1, $2, $3) RETURNING id, created_at;',
       [category, message.trim(), replyEmail?.trim() || null],
     );
+    if (!mailTransport) {
+      console.warn('Request saved, but email was not sent because SMTP is not configured.');
+    } else {
+      const categoryLabels: Record<string, string> = {
+        feature: '기능 제안', data: '화장실 정보 수정', bug: '오류 신고', other: '기타',
+      };
+      try {
+        await mailTransport.sendMail({
+          from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
+          to: requestRecipients.join(', '),
+          replyTo: replyEmail?.trim() || undefined,
+          subject: `[급해요화장실] 새 요청사항 - ${categoryLabels[category]}`,
+          text: [
+            `요청 번호: ${result.rows[0].id}`,
+            `유형: ${categoryLabels[category]}`,
+            `답변 이메일: ${replyEmail?.trim() || '없음'}`,
+            '',
+            message.trim(),
+          ].join('\n'),
+        });
+      } catch (mailError) {
+        console.error('Request saved, but notification email failed:', mailError);
+      }
+    }
     response.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Failed to create service request:', error);

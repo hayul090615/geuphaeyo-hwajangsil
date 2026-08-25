@@ -3,6 +3,7 @@ import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
 import ToiletCard from '../components/ToiletCard';
 import { getNearbyToilets } from '../services/toiletService';
+import { submitRequest } from '../services/requestService';
 import type { Toilet } from '../types/toilet';
 
 type ToiletForm = {
@@ -68,6 +69,11 @@ export default function Home() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [form, setForm] = useState<ToiletForm>(initialForm);
   const [formError, setFormError] = useState('');
+  const [isRequestOpen, setIsRequestOpen] = useState(false);
+  const [requestCategory, setRequestCategory] = useState<'feature' | 'data' | 'bug' | 'other'>('feature');
+  const [requestMessage, setRequestMessage] = useState('');
+  const [requestEmail, setRequestEmail] = useState('');
+  const [requestState, setRequestState] = useState('');
 
   useEffect(() => {
     void getNearbyToilets().then((items) => setToilets([...loadSubmitted(), ...items]));
@@ -146,11 +152,29 @@ export default function Home() {
     closeModal();
   };
 
+  const sendRequest = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (requestMessage.trim().length < 10) {
+      setRequestState('요청 내용을 10자 이상 입력해 주세요.');
+      return;
+    }
+    setRequestState('전송 중...');
+    try {
+      await submitRequest({ category: requestCategory, message: requestMessage.trim(), replyEmail: requestEmail.trim() || undefined });
+      setRequestState('요청사항이 전달되었습니다.');
+      setRequestMessage('');
+      setRequestEmail('');
+      setTimeout(() => { setIsRequestOpen(false); setRequestState(''); }, 900);
+    } catch (error) {
+      setRequestState(error instanceof Error ? error.message : '요청사항을 전송하지 못했습니다.');
+    }
+  };
+
   return (
     <div className="page">
       <div className="top-strip" />
       <div className="app-shell">
-        <Header onAddOpen={() => setIsAddOpen(true)} />
+        <Header onRequestOpen={() => setIsRequestOpen(true)} onAddOpen={() => setIsAddOpen(true)} />
         <main>
           <section className="hero">
             <p className="eyebrow">급할 때, 가까운 곳부터</p>
@@ -230,6 +254,32 @@ export default function Home() {
               <div className="form-actions">
                 <button className="cancel-button" type="button" onClick={closeModal}>취소</button>
                 <button className="submit-button" type="submit">검토 요청하기</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {isRequestOpen && (
+        <div className="modal-backdrop" onMouseDown={() => setIsRequestOpen(false)}>
+          <section className="add-modal request-modal" role="dialog" aria-modal="true" aria-labelledby="request-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div><p>서비스 의견 보내기</p><h2 id="request-modal-title">요청사항</h2></div>
+              <button type="button" onClick={() => setIsRequestOpen(false)} aria-label="닫기">×</button>
+            </div>
+            <p className="modal-description">불편한 점이나 필요한 기능을 남겨주시면 운영팀에서 확인합니다.</p>
+            <form className="add-form" onSubmit={sendRequest}>
+              <label>요청 유형
+                <select value={requestCategory} onChange={(event) => setRequestCategory(event.target.value as typeof requestCategory)}>
+                  <option value="feature">기능 제안</option><option value="data">화장실 정보 수정</option><option value="bug">오류 신고</option><option value="other">기타</option>
+                </select>
+              </label>
+              <label>요청 내용 *<textarea required minLength={10} maxLength={1000} value={requestMessage} onChange={(event) => { setRequestMessage(event.target.value); setRequestState(''); }} placeholder="필요한 내용이나 불편한 점을 자세히 적어주세요." /></label>
+              <label>답변받을 이메일 (선택)<input type="email" value={requestEmail} onChange={(event) => setRequestEmail(event.target.value)} placeholder="you@example.com" /></label>
+              {requestState && <p className="request-status" role="status">{requestState}</p>}
+              <div className="form-actions">
+                <button className="cancel-button" type="button" onClick={() => setIsRequestOpen(false)}>취소</button>
+                <button className="submit-button" type="submit">운영팀에 보내기</button>
               </div>
             </form>
           </section>

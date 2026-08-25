@@ -1,10 +1,56 @@
 import express from 'express';
+import { OAuth2Client } from 'google-auth-library';
 import { pool } from './db/pool';
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClient = new OAuth2Client(googleClientId);
 
 app.use(express.json());
+app.use((_request, response, next) => {
+  response.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+  if (_request.method === 'OPTIONS') { response.status(204).send(); return; }
+  next();
+});
+
+app.post('/auth/google', async (request, response) => {
+  const credential = request.body?.credential;
+  if (!googleClientId) { response.status(503).json({ message: 'Google 로그인이 아직 설정되지 않았습니다.' }); return; }
+  if (typeof credential !== 'string' || credential.length > 5000) { response.status(400).json({ message: '잘못된 Google 인증 정보입니다.' }); return; }
+  try {
+    const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: googleClientId });
+    const payload = ticket.getPayload();
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
+      response.status(401).json({ message: '확인되지 않은 Google 계정입니다.' });
+      return;
+    }
+    response.json({ id: `google:${payload.sub}`, email: payload.email, nickname: payload.name || payload.email.split('@')[0] });
+  } catch {
+    response.status(401).json({ message: 'Google 인증이 만료되었거나 유효하지 않습니다.' });
+  }
+});
+
+app.post('/requests', async (request, response) => {
+  const { category, message, replyEmail } = request.body ?? {};
+  if (!['feature', 'data', 'bug', 'other'].includes(category)) { response.status(400).json({ message: '요청 유형을 확인해 주세요.' }); return; }
+  if (typeof message !== 'string' || message.trim().length < 10 || message.length > 1000) { response.status(400).json({ message: '요청 내용은 10~1000자로 입력해 주세요.' }); return; }
+  if (replyEmail !== undefined && (typeof replyEmail !== 'string' || replyEmail.length > 254 || !replyEmail.includes('@'))) {
+    response.status(400).json({ message: '답변 이메일을 확인해 주세요.' }); return;
+  }
+  try {
+    const result = await pool.query(
+      'INSERT INTO public.service_requests (category, message, reply_email) VALUES ($1, $2, $3) RETURNING id, created_at;',
+      [category, message.trim(), replyEmail?.trim() || null],
+    );
+    response.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Failed to create service request:', error);
+    response.status(500).json({ message: '요청사항을 저장하지 못했습니다.' });
+  }
+});
 
 type ToiletInput = Record<string, string | number | boolean | null>;
 type InputMode = 'create' | 'update';

@@ -13,6 +13,7 @@
     "db:schema": "psql -h localhost -U postgres -d geuphaeyo -f sql/002_create_tables.sql",
     "db:seed": "psql -h localhost -U postgres -d geuphaeyo -f sql/003_seed_restrooms.sql",
     "db:migrate": "psql -h localhost -U postgres -d geuphaeyo -f sql/004_migrate_to_toilets.sql",
+    "db:requests": "psql -h localhost -U postgres -d geuphaeyo -f sql/005_create_service_requests.sql",
     "db:setup": "npm run db:create && npm run db:schema && npm run db:seed",
     "start": "node dist/server.js"
   },
@@ -22,6 +23,7 @@
   "dependencies": {
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "google-auth-library": "^11.0.2",
     "pg": "^8.23.0"
   },
   "devDependencies": {

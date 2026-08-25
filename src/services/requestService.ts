@@ -1,4 +1,7 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+const DEFAULT_API_URL = window.location.hostname === 'localhost'
+  ? 'http://localhost:3000'
+  : 'https://geuphaeyo-hwajangsil-api.onrender.com';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL).replace(/\/$/, '');
 
 export type RequestInput = {
   category: 'feature' | 'data' | 'bug' | 'other';

@@ -1,0 +1,60 @@
+services:
+  - type: web
+    name: geuphaeyo-hwajangsil-api
+    runtime: node
+    plan: free
+    region: singapore
+    branch: service
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run migrate:deploy && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: geuphaeyo-hwajangsil-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: geuphaeyo-hwajangsil-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: geuphaeyo-hwajangsil-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: geuphaeyo-hwajangsil-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: geuphaeyo-hwajangsil-db
+          property: password
+      - key: DB_SSL
+        value: "false"
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+
+databases:
+  - name: geuphaeyo-hwajangsil-db
+    plan: free
+    region: singapore
+    databaseName: geuphaeyo
+    user: geuphaeyo
+    postgresMajorVersion: "17"

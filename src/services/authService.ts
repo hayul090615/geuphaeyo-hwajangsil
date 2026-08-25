@@ -29,7 +29,10 @@ export function signIn(email: string, password: string): User {
 }
 
 export async function signInWithGoogle(credential: string): Promise<User> {
-  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const defaultApiUrl = window.location.hostname === 'localhost'
+    ? 'http://localhost:3000'
+    : 'https://geuphaeyo-hwajangsil-api.onrender.com';
+  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || defaultApiUrl).replace(/\/$/, '');
   const response = await fetch(`${apiBaseUrl}/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

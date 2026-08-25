@@ -19,11 +19,22 @@ const mailTransport = process.env.SMTP_HOST && process.env.SMTP_USER && process.
 
 app.use(express.json());
 app.use((_request, response, next) => {
-  response.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173');
+  const origin = _request.headers.origin;
+  const allowedOrigin = !origin || origin === process.env.FRONTEND_ORIGIN || /^http:\/\/localhost:\d+$/.test(origin) || /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin);
+  if (origin && allowedOrigin) response.setHeader('Access-Control-Allow-Origin', origin);
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
   if (_request.method === 'OPTIONS') { response.status(204).send(); return; }
   next();
+});
+
+app.get('/health', async (_request, response) => {
+  try {
+    await pool.query('SELECT 1;');
+    response.json({ status: 'ok' });
+  } catch {
+    response.status(503).json({ status: 'unavailable' });
+  }
 });
 
 app.post('/auth/google', async (request, response) => {

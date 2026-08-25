@@ -14,6 +14,7 @@
     "db:seed": "psql -h localhost -U postgres -d geuphaeyo -f sql/003_seed_restrooms.sql",
     "db:migrate": "psql -h localhost -U postgres -d geuphaeyo -f sql/004_migrate_to_toilets.sql",
     "db:requests": "psql -h localhost -U postgres -d geuphaeyo -f sql/005_create_service_requests.sql",
+    "migrate:deploy": "node dist/db/migrate.js",
     "db:setup": "npm run db:create && npm run db:schema && npm run db:seed",
     "start": "node dist/server.js"
   },

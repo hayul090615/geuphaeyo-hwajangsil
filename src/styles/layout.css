@@ -253,6 +253,84 @@ button { cursor: pointer; }
 .submit-button { background: #ff594d; color: #fff; }
 .submit-button:hover { background: #ed4d43; }
 
+.pending-tag { background: #fff7dc; color: #8d6b00; }
+.add-modal-wide {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+}
+.submission-rules {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid #ffe0dc;
+  border-radius: 10px;
+  background: #fff8f7;
+}
+.submission-rules strong { color: #e64f45; font-size: 12px; }
+.submission-rules ul {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding-left: 17px;
+  color: #657384;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid label {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  color: #405063;
+  font-size: 11px;
+  font-weight: 800;
+}
+.form-grid input,
+.form-grid select,
+.form-grid textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #dfe4e9;
+  border-radius: 8px;
+  outline: 0;
+  background: #fff;
+  color: #172534;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+}
+.form-grid textarea { min-height: 72px; resize: vertical; line-height: 1.5; }
+.form-grid input:focus,
+.form-grid select:focus,
+.form-grid textarea:focus { border-color: #ff776d; box-shadow: 0 0 0 3px rgba(255, 89, 77, .1); }
+.form-grid input:disabled { background: #f3f5f7; color: #84909d; }
+.full-field { grid-column: 1 / -1; }
+.option-checks { flex-wrap: wrap; padding: 2px 0; }
+.rule-agreement {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 11px 12px;
+  border-radius: 8px;
+  background: #f5f7f9;
+  color: #4c5b6b;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.rule-agreement input { margin-top: 2px; accent-color: #ff594d; }
+.form-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff0ee;
+  color: #d84339;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 @media (max-width: 760px) {
   .app-shell { width: min(100% - 32px, 520px); }
   .hero { padding-top: 28px; }
@@ -269,4 +347,7 @@ button { cursor: pointer; }
   .site-header { height: 58px; }
   .toilet-list { grid-template-columns: 1fr; }
   .check-row { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .full-field { grid-column: auto; }
+  .add-modal { padding: 22px 18px; }
 }

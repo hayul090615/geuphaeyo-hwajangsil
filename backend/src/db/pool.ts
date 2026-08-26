@@ -2,11 +2,14 @@ import { Pool } from 'pg';
 import { env } from '../config/env';
 
 export const pool = new Pool({
-  host: env.db.host,
-  port: env.db.port,
-  database: env.db.name,
-  user: env.db.user,
-  password: env.db.password,
+  connectionString: env.db.connectionString,
+  ...(env.db.connectionString ? {} : {
+    host: env.db.host,
+    port: env.db.port,
+    database: env.db.name,
+    user: env.db.user,
+    password: env.db.password,
+  }),
   ssl: env.db.ssl ? { rejectUnauthorized: false } : undefined,
   max: 10,
   idleTimeoutMillis: 30_000,

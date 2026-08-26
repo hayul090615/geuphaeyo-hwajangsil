@@ -30,6 +30,49 @@ const mockToilets: Toilet[] = places.map(([name, address, distance, openAllDay, 
   longitude: 126.9779 + index * 0.0003,
 }));
 
+type ApiToilet = {
+  id: string | number;
+  name: string;
+  address: string;
+  latitude: string | number;
+  longitude: string | number;
+  open_24h: boolean | null;
+  opening_hours: string | null;
+  accessible: boolean | null;
+  distance_meters: string | number | null;
+  diaper_changing_table_available: boolean | null;
+};
+
+const DEFAULT_API_URL = window.location.hostname === 'localhost'
+  ? 'http://localhost:3000'
+  : 'https://geuphaeyo-hwajangsil-api.onrender.com';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL).replace(/\/$/, '');
+
+function formatDistance(value: ApiToilet['distance_meters']): string {
+  const meters = Number(value);
+  if (!Number.isFinite(meters)) return '거리 확인 중';
+  return meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${Math.round(meters)}m`;
+}
+
 export async function getNearbyToilets(): Promise<Toilet[]> {
-  return Promise.resolve(mockToilets);
+  try {
+    const response = await fetch(`${API_BASE_URL}/toilets`);
+    if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+    const rows = await response.json() as ApiToilet[];
+    return rows.map((row) => ({
+      id: String(row.id),
+      name: row.name,
+      address: row.address,
+      distance: formatDistance(row.distance_meters),
+      openAllDay: row.open_24h === true,
+      hours: row.opening_hours || undefined,
+      accessible: row.accessible === true,
+      babyFacility: row.diaper_changing_table_available === true,
+      latitude: Number(row.latitude),
+      longitude: Number(row.longitude),
+    }));
+  } catch (error) {
+    console.warn('Backend API is unavailable; using the bundled toilet list.', error);
+    return mockToilets;
+  }
 }

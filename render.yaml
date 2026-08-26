@@ -12,28 +12,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DB_HOST
+      - key: DATABASE_URL
         fromDatabase:
           name: geuphaeyo-hwajangsil-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: geuphaeyo-hwajangsil-db
-          property: port
-      - key: DB_NAME
-        fromDatabase:
-          name: geuphaeyo-hwajangsil-db
-          property: database
-      - key: DB_USER
-        fromDatabase:
-          name: geuphaeyo-hwajangsil-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: geuphaeyo-hwajangsil-db
-          property: password
+          property: connectionString
       - key: DB_SSL
-        value: "false"
+        value: "true"
       - key: FRONTEND_ORIGIN
         value: https://temporary-nimble-cyclone-rxsi871.vercel.app
 

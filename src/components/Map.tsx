@@ -510,7 +510,7 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
 
   return (
     <>
-      <div className="map-status" role="status">
+      <div className={`map-status${directionsTarget ? ' has-directions' : ''}`} role="status">
         <div>
           {directionsTarget ? (
             <>

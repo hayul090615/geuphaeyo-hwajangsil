@@ -878,8 +878,42 @@
     font-size: 11px;
   }
 
+  .map-home-main {
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .map-home .map-status {
+    display: grid;
+    height: auto;
+    min-height: 0;
+    gap: 8px;
+    overflow: visible;
+  }
+
+  .map-home .map-status > div:first-child {
+    display: grid;
+    width: 100%;
+    gap: 4px;
+    overflow: visible;
+  }
+
+  .map-home .map-status > div:first-child > span {
+    line-height: 1.4;
+    white-space: normal;
+  }
+
   .map-home .map-status > div:first-child > small {
+    display: none;
+  }
+
+  .map-home .map-status.has-directions > div:first-child > small {
     display: block;
-    flex: 0 0 auto;
+    line-height: 1.4;
+    white-space: normal;
+  }
+
+  .map-home .directions-mode-row {
+    width: 100%;
+    overflow-x: auto;
   }
 }

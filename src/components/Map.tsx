@@ -24,7 +24,7 @@ const TOILET_SEARCH_KEYWORDS = [
 const SEARCH_PAGE_COUNT = 2;
 const WIDE_SEARCH_GRID_SIZE = 3;
 const NEARBY_SEARCH_GRID_SIZE = 2;
-const SEARCH_CONCURRENCY = 10;
+const SEARCH_CONCURRENCY = 6;
 const SEOUL_MAP_LEVEL = 8;
 const NEARBY_MAP_LEVEL = 5;
 const LONG_DISTANCE_CAR_THRESHOLD_METERS = 20_000;
@@ -238,12 +238,12 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
       );
     });
 
-    const searchTasks = searchBounds.flatMap((cellBounds) =>
-      searchKeywords.flatMap((keyword) =>
-        Array.from(
-          { length: SEARCH_PAGE_COUNT },
-          (_, index) => () => searchPage(keyword, cellBounds, index + 1),
-        ),
+    const searchTasks = Array.from(
+      { length: SEARCH_PAGE_COUNT },
+      (_, index) => index + 1,
+    ).flatMap((page) =>
+      searchBounds.flatMap((cellBounds) =>
+        searchKeywords.map((keyword) => () => searchPage(keyword, cellBounds, page)),
       ),
     );
     const results: PromiseSettledResult<kakao.maps.services.PlacesSearchResult>[] = [];

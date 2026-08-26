@@ -196,10 +196,11 @@ export default function Home({ onLogout }: HomeProps) {
           <section className="toilet-section">
             <div className="section-title">
               <div><h2>주변 은평구 화장실</h2><p>세명컴퓨터고등학교 주변의 거리와 이용 정보를 확인하세요.</p></div>
-              <span>{filtered.length}곳</span>
+              <span>{Math.min(filtered.length, 16)}곳</span>
             </div>
-            <div className="toilet-list">{filtered.map((toilet) => <ToiletCard key={toilet.id} toilet={toilet} />)}</div>
+            <div className="toilet-list">{filtered.slice(0, 16).map((toilet) => <ToiletCard key={toilet.id} toilet={toilet} />)}</div>
             {filtered.length === 0 && <p className="empty-result">검색 결과가 없습니다.</p>}
+            <div className="list-end-line" aria-hidden="true" />
           </section>
         </main>
       </div>

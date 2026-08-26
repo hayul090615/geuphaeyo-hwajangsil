@@ -6,7 +6,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL).repl
 export type RequestInput = {
   category: 'feature' | 'data' | 'bug' | 'other';
   message: string;
-  replyEmail?: string;
+  recipientEmail: 'hayul9888@gmail.com' | 'sg8111320@gmail.com';
 };
 
 export async function submitRequest(input: RequestInput): Promise<void> {

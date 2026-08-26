@@ -63,7 +63,9 @@ function loadSubmitted(): Toilet[] {
   }
 }
 
-export default function Home() {
+type HomeProps = { onLogout: () => void };
+
+export default function Home({ onLogout }: HomeProps) {
   const [query, setQuery] = useState('');
   const [toilets, setToilets] = useState<Toilet[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -72,7 +74,7 @@ export default function Home() {
   const [isRequestOpen, setIsRequestOpen] = useState(false);
   const [requestCategory, setRequestCategory] = useState<'feature' | 'data' | 'bug' | 'other'>('feature');
   const [requestMessage, setRequestMessage] = useState('');
-  const [requestEmail, setRequestEmail] = useState('');
+  const [requestRecipient, setRequestRecipient] = useState<'hayul9888@gmail.com' | 'sg8111320@gmail.com'>('hayul9888@gmail.com');
   const [requestState, setRequestState] = useState('');
 
   useEffect(() => {
@@ -160,10 +162,9 @@ export default function Home() {
     }
     setRequestState('전송 중...');
     try {
-      await submitRequest({ category: requestCategory, message: requestMessage.trim(), replyEmail: requestEmail.trim() || undefined });
+      await submitRequest({ category: requestCategory, message: requestMessage.trim(), recipientEmail: requestRecipient });
       setRequestState('요청사항이 전달되었습니다.');
       setRequestMessage('');
-      setRequestEmail('');
       setTimeout(() => { setIsRequestOpen(false); setRequestState(''); }, 900);
     } catch (error) {
       setRequestState(error instanceof Error ? error.message : '요청사항을 전송하지 못했습니다.');
@@ -174,7 +175,7 @@ export default function Home() {
     <div className="page">
       <div className="top-strip" />
       <div className="app-shell">
-        <Header onRequestOpen={() => setIsRequestOpen(true)} onAddOpen={() => setIsAddOpen(true)} />
+        <Header onRequestOpen={() => setIsRequestOpen(true)} onAddOpen={() => setIsAddOpen(true)} onLogout={onLogout} />
         <main>
           <section className="hero">
             <p className="eyebrow">급할 때, 가까운 곳부터</p>
@@ -275,7 +276,12 @@ export default function Home() {
                 </select>
               </label>
               <label>요청 내용 *<textarea required minLength={10} maxLength={1000} value={requestMessage} onChange={(event) => { setRequestMessage(event.target.value); setRequestState(''); }} placeholder="필요한 내용이나 불편한 점을 자세히 적어주세요." /></label>
-              <label>답변받을 이메일 (선택)<input type="email" value={requestEmail} onChange={(event) => setRequestEmail(event.target.value)} placeholder="you@example.com" /></label>
+              <label>받는 사람 *
+                <select required value={requestRecipient} onChange={(event) => setRequestRecipient(event.target.value as typeof requestRecipient)}>
+                  <option value="hayul9888@gmail.com">hayul9888@gmail.com</option>
+                  <option value="sg8111320@gmail.com">sg8111320@gmail.com</option>
+                </select>
+              </label>
               {requestState && <p className="request-status" role="status">{requestState}</p>}
               <div className="form-actions">
                 <button className="cancel-button" type="button" onClick={() => setIsRequestOpen(false)}>취소</button>

@@ -7,7 +7,7 @@ const app = express();
 const port = Number(process.env.PORT ?? 3000);
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClient = new OAuth2Client(googleClientId);
-const requestRecipients = ['hayul9888@gmail.com', 'sg8111320@gmail.com'];
+const requestRecipients = ['hayul9888@gmail.com', 'sg8111320@gmail.com'] as const;
 const mailTransport = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD
   ? nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -55,16 +55,16 @@ app.post('/auth/google', async (request, response) => {
 });
 
 app.post('/requests', async (request, response) => {
-  const { category, message, replyEmail } = request.body ?? {};
+  const { category, message, recipientEmail } = request.body ?? {};
   if (!['feature', 'data', 'bug', 'other'].includes(category)) { response.status(400).json({ message: '요청 유형을 확인해 주세요.' }); return; }
   if (typeof message !== 'string' || message.trim().length < 10 || message.length > 1000) { response.status(400).json({ message: '요청 내용은 10~1000자로 입력해 주세요.' }); return; }
-  if (replyEmail !== undefined && (typeof replyEmail !== 'string' || replyEmail.length > 254 || !replyEmail.includes('@'))) {
-    response.status(400).json({ message: '답변 이메일을 확인해 주세요.' }); return;
+  if (typeof recipientEmail !== 'string' || !requestRecipients.includes(recipientEmail as typeof requestRecipients[number])) {
+    response.status(400).json({ message: '받는 사람을 선택해 주세요.' }); return;
   }
   try {
     const result = await pool.query(
       'INSERT INTO public.service_requests (category, message, reply_email) VALUES ($1, $2, $3) RETURNING id, created_at;',
-      [category, message.trim(), replyEmail?.trim() || null],
+      [category, message.trim(), null],
     );
     if (!mailTransport) {
       console.warn('Request saved, but email was not sent because SMTP is not configured.');
@@ -75,13 +75,12 @@ app.post('/requests', async (request, response) => {
       try {
         await mailTransport.sendMail({
           from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
-          to: requestRecipients.join(', '),
-          replyTo: replyEmail?.trim() || undefined,
+          to: recipientEmail,
           subject: `[급해요화장실] 새 요청사항 - ${categoryLabels[category]}`,
           text: [
             `요청 번호: ${result.rows[0].id}`,
             `유형: ${categoryLabels[category]}`,
-            `답변 이메일: ${replyEmail?.trim() || '없음'}`,
+            `받는 사람: ${recipientEmail}`,
             '',
             message.trim(),
           ].join('\n'),

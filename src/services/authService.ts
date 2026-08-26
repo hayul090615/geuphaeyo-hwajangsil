@@ -9,7 +9,7 @@ function readUsers(): StoredUser[] {
 }
 
 export function getCurrentUser(): User | null {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null') as User | null; } catch { return null; }
+  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null') as User | null; } catch { return null; }
 }
 
 export function signUp(input: SignUpInput): User {
@@ -24,7 +24,7 @@ export function signIn(email: string, password: string): User {
   const user = readUsers().find((item) => item.email.toLowerCase() === email.toLowerCase() && item.password === password);
   if (!user) throw new Error('이메일 또는 비밀번호를 확인해 주세요.');
   const session: User = { id: user.id, email: user.email, nickname: user.nickname };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   return session;
 }
 
@@ -41,8 +41,8 @@ export async function signInWithGoogle(credential: string): Promise<User> {
   const body = await response.json().catch(() => null) as (User & { message?: string }) | null;
   if (!response.ok || !body) throw new Error(body?.message || 'Google 로그인에 실패했습니다.');
   const user: User = { id: body.id, email: body.email, nickname: body.nickname };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
   return user;
 }
 
-export function signOut() { localStorage.removeItem(SESSION_KEY); }
+export function signOut() { sessionStorage.removeItem(SESSION_KEY); }

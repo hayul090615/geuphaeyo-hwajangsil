@@ -20,7 +20,8 @@ button { cursor: pointer; }
 .app-shell {
   width: 60%;
   min-width: 960px;
-  padding: 0 clamp(36px, 3.5vw, 68px);
+  min-height: calc(100vh - 28px);
+  padding: 0 clamp(36px, 3.5vw, 68px) 52px;
   margin: 0 auto;
   background: #fff;
   box-shadow: 0 0 35px rgba(54, 82, 112, .08);
@@ -169,12 +170,6 @@ button { cursor: pointer; }
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 9px;
-}
-
-.list-end-line {
-  height: 5px;
-  margin-top: 32px;
-  background: #aebdcd;
 }
 
 .toilet-card {
@@ -349,3 +344,28 @@ button { cursor: pointer; }
   line-height: 1.45;
 }
 .request-modal select,.request-modal textarea,.request-modal input{width:100%;padding:11px 12px;border:1px solid #dfe4e9;border-radius:8px;outline:0;background:#fff;color:#172534;font:inherit;font-size:12px}.request-modal textarea{min-height:130px;resize:vertical;line-height:1.55}.request-status{margin:0;padding:10px 12px;border-radius:8px;background:#f5f7f9;color:#4e5e70;font-size:11px;font-weight:700}
+
+/* Keep the fixed layout while making the whole service easier to read. */
+.site-header { height: 76px; }
+.brand { font-size: 17px; }
+.request-button, .service-button, .logout-button { font-size: 12px; }
+.request-button, .service-button { padding: 9px 15px; }
+.hero { padding: 42px 0 38px; }
+.eyebrow { font-size: 12px; }
+.hero h1 { font-size: 50px; }
+.hero-description { font-size: 13px; }
+.search-bar { width: 440px; padding: 16px 18px; }
+.search-bar input { font-size: 13px; }
+.service-guide { padding: 24px 26px; }
+.guide-eyebrow { font-size: 11px; }
+.service-guide h2 { font-size: 18px; }
+.service-guide strong { font-size: 11px; }
+.service-guide li span { font-size: 10px; }
+.section-title h2 { font-size: 18px; }
+.section-title p, .section-title > span { font-size: 11px; }
+.toilet-list { gap: 12px; }
+.toilet-card { min-height: 102px; padding: 16px; }
+.card-heading h3 { font-size: 13px; }
+.distance { font-size: 10px; }
+.address { font-size: 10px; }
+.tag { font-size: 9px; }

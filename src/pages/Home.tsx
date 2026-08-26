@@ -200,7 +200,6 @@ export default function Home({ onLogout }: HomeProps) {
             </div>
             <div className="toilet-list">{filtered.slice(0, 16).map((toilet) => <ToiletCard key={toilet.id} toilet={toilet} />)}</div>
             {filtered.length === 0 && <p className="empty-result">검색 결과가 없습니다.</p>}
-            <div className="list-end-line" aria-hidden="true" />
           </section>
         </main>
       </div>

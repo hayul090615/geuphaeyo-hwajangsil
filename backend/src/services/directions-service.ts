@@ -72,6 +72,56 @@ function geoJsonCoordinates(value: unknown): DirectionsPoint[] {
   });
 }
 
+type OsmStartCandidate = {
+  point: DirectionsPoint;
+  snapDistanceMeters: number;
+  hasRoadName: boolean;
+};
+
+const MAX_OSM_START_CANDIDATES = 3;
+const MAX_OSM_START_SNAP_METERS = 120;
+
+async function getOsmStartCandidates(origin: DirectionsPoint): Promise<OsmStartCandidate[]> {
+  const coordinates = origin.longitude + ',' + origin.latitude;
+  const url = new URL(
+    'https://routing.openstreetmap.de/routed-foot/nearest/v1/driving/' + coordinates
+  );
+  url.searchParams.set('number', String(MAX_OSM_START_CANDIDATES));
+
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'GeuphaeyoToilet/0.1 (student-project)' },
+    signal: AbortSignal.timeout(8_000)
+  });
+  const body: unknown = await response.json().catch(() => undefined);
+  if (!response.ok || !isRecord(body) || body.code !== 'Ok') return [];
+
+  const candidates: OsmStartCandidate[] = [];
+  for (const waypoint of records(body.waypoints)) {
+    if (!Array.isArray(waypoint.location)) continue;
+    const longitude = numberValue(waypoint.location[0]);
+    const latitude = numberValue(waypoint.location[1]);
+    const snapDistanceMeters = numberValue(waypoint.distance);
+    if (
+      longitude === undefined ||
+      latitude === undefined ||
+      snapDistanceMeters === undefined ||
+      snapDistanceMeters > MAX_OSM_START_SNAP_METERS
+    ) continue;
+
+    const isDuplicate = candidates.some(({ point }) =>
+      point.latitude === latitude && point.longitude === longitude
+    );
+    if (isDuplicate) continue;
+
+    candidates.push({
+      point: { latitude, longitude },
+      snapDistanceMeters,
+      hasRoadName: stringValue(waypoint.name) !== undefined
+    });
+  }
+  return candidates.slice(0, MAX_OSM_START_CANDIDATES);
+}
+
 function osmInstruction(step: JsonRecord): string {
   const maneuver = isRecord(step.maneuver) ? step.maneuver : {};
   const type = stringValue(maneuver.type) ?? 'continue';
@@ -98,7 +148,7 @@ function osmInstruction(step: JsonRecord): string {
   return '경로를 따라 계속 이동하세요.';
 }
 
-async function getOsmDirections(
+async function requestOsmDirections(
   request: DirectionsRequest & { mode: 'walk' | 'bicycle' }
 ) {
   const { origin, destination, mode } = request;
@@ -196,6 +246,48 @@ async function getOsmDirections(
     mode,
     ...(steps.length ? { steps } : {})
   };
+}
+
+async function getOsmDirections(
+  request: DirectionsRequest & { mode: 'walk' | 'bicycle' }
+) {
+  if (request.mode === 'bicycle') return requestOsmDirections(request);
+
+  let startCandidates: OsmStartCandidate[] = [];
+  try {
+    startCandidates = await getOsmStartCandidates(request.origin);
+  } catch {
+    // Keep the previous single-origin request as the fallback if Nearest is unavailable.
+  }
+  if (!startCandidates.length) return requestOsmDirections(request);
+
+  const attempts = await Promise.allSettled(
+    startCandidates.map(async (candidate) => ({
+      candidate,
+      route: await requestOsmDirections({ ...request, origin: candidate.point })
+    }))
+  );
+  const routedCandidates = attempts.flatMap((attempt) =>
+    attempt.status === 'fulfilled' ? [attempt.value] : []
+  );
+  if (!routedCandidates.length) return requestOsmDirections(request);
+
+  const shortestTotalDistance = Math.min(
+    ...routedCandidates.map(({ candidate, route }) =>
+      candidate.snapDistanceMeters + route.distanceMeters
+    )
+  );
+  const reasonableCandidates = routedCandidates.filter(({ candidate, route }) =>
+    candidate.snapDistanceMeters + route.distanceMeters <= shortestTotalDistance * 1.35 + 80
+  );
+
+  return reasonableCandidates.reduce((best, current) => {
+    const score = ({ candidate, route }: typeof current) =>
+      route.durationSeconds +
+      candidate.snapDistanceMeters / 1.25 +
+      (candidate.hasRoadName ? 0 : 75);
+    return score(current) < score(best) ? current : best;
+  }).route;
 }
 
 async function kakaoRequest(url: URL): Promise<JsonRecord> {

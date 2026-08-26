@@ -251,7 +251,7 @@ export default function Home({ onLogout }: HomeProps) {
                 <label><input type="checkbox" checked={form.babyFacility} onChange={(event) => updateForm('babyFacility', event.target.checked)} /> 기저귀 교환대 있음</label>
               </div>
 
-              <label className="rule-agreement"><input type="checkbox" checked={form.agreed} onChange={(event) => updateForm('agreed', event.target.checked)} /> 위 등록 규칙을 확인했으며 정확한 정보임에 동의합니다.</label>
+              <label className="rule-agreement"><span>위 등록 규칙을 확인했으며 정확한 정보임에 동의합니다.</span><input type="checkbox" checked={form.agreed} onChange={(event) => updateForm('agreed', event.target.checked)} /></label>
               {formError && <p className="form-error" role="alert">{formError}</p>}
               <div className="form-actions">
                 <button className="cancel-button" type="button" onClick={closeModal}>취소</button>

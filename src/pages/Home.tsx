@@ -196,7 +196,7 @@ export default function Home({ onLogout }: HomeProps) {
 
           <section className="toilet-section">
             <div className="section-title">
-              <div><h2>주변 은평구 화장실</h2><p>세명컴퓨터고등학교 주변의 거리와 이용 정보를 확인하세요.</p></div>
+              <div><h2>화장실 추천</h2><p>세명컴퓨터고등학교 주변의 거리와 이용 정보를 확인하세요.</p></div>
               <span>{Math.min(filtered.length, 16)}곳</span>
             </div>
             <div className="toilet-list">{filtered.slice(0, 16).map((toilet) => <ToiletCard key={toilet.id} toilet={toilet} />)}</div>

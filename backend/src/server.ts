@@ -1,10 +1,28 @@
 import express from 'express';
+import { env } from './config/env';
 import { pool } from './db/pool';
+import { directionsRouter } from './routes/directions';
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
 
 app.use(express.json());
+app.use((request, response, next) => {
+  const origin = request.headers.origin;
+  if (origin && env.frontendOrigins.includes(origin)) {
+    response.setHeader('Access-Control-Allow-Origin', origin);
+    response.setHeader('Vary', 'Origin');
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  }
+  if (request.method === 'OPTIONS') {
+    response.status(204).send();
+    return;
+  }
+  next();
+});
+
+app.use('/api/directions', directionsRouter);
 
 type ToiletInput = Record<string, string | number | boolean | null>;
 type InputMode = 'create' | 'update';

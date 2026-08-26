@@ -30,5 +30,13 @@ export const env = {
     user: getEnv('DB_USER', 'postgres'),
     password: getEnv('DB_PASSWORD'),
     ssl: process.env.DB_SSL === 'true'
-  }
+  },
+  kakaoRestApiKey: getEnv('KAKAO_REST_API_KEY'),
+  frontendOrigins: getEnv(
+    'FRONTEND_ORIGINS',
+    'http://localhost:5173,https://geuphaeyo-hwajangsil-integration-fr.vercel.app'
+  )
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
 } as const;

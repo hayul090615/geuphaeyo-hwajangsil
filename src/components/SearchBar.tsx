@@ -1,2 +1,22 @@
-type SearchBarProps = { value:string; onChange:(value:string)=>void };
-export default function SearchBar({value,onChange}:SearchBarProps) { return <label className="search-bar"><span aria-hidden="true">⌕</span><input value={value} onChange={e=>onChange(e.target.value)} placeholder="주소나 장소를 검색해보세요" /></label>; }
+type SearchBarProps = {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: (value: string) => void;
+};
+
+export default function SearchBar({ value, onChange, onSubmit }: SearchBarProps) {
+  const clearSearch = () => {
+    onChange('');
+    onSubmit('');
+  };
+
+  return (
+    <form className="search-bar" role="search" onSubmit={(event) => { event.preventDefault(); onSubmit(value.trim()); }}>
+      <button className="search-submit" type="submit" aria-label="화장실 검색">
+        <span aria-hidden="true">⌕</span>
+      </button>
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder="지역, 화장실 이름 또는 주소로 검색" aria-label="화장실 검색어" />
+      {value && <button type="button" onClick={clearSearch} aria-label="검색어 지우기">×</button>}
+    </form>
+  );
+}

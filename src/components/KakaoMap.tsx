@@ -25,7 +25,7 @@ function KakaoMap() {
 function LoadedKakaoMap({ appKey }: { appKey: string }) {
   const [currentPosition, setCurrentPosition] = useState<MapPosition | null>(null);
   const [locationMessage, setLocationMessage] = useState("현재 위치를 확인하는 중입니다.");
-  const watchIdRef = useRef<number | null>(null);
+  const hasRequestedLocation = useRef(false);
 
   const [loading, error] = useKakaoLoader({
     appkey: appKey,
@@ -40,15 +40,11 @@ function LoadedKakaoMap({ appKey }: { appKey: string }) {
       return;
     }
 
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
-
     setLocationMessage("현재 위치를 확인하는 중입니다.");
-    watchIdRef.current = navigator.geolocation.watchPosition(
+    navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         setCurrentPosition({ lat: coords.latitude, lng: coords.longitude });
-        setLocationMessage("현재 위치를 실시간으로 표시하고 있습니다.");
+        setLocationMessage("현재 위치를 지도에 표시했습니다.");
       },
       () => {
         setLocationMessage("현재 위치 권한을 허용하면 내 위치를 표시할 수 있습니다.");
@@ -62,20 +58,19 @@ function LoadedKakaoMap({ appKey }: { appKey: string }) {
   }, []);
 
   useEffect(() => {
-    requestCurrentLocation();
+    if (hasRequestedLocation.current) {
+      return;
+    }
 
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-    };
+    hasRequestedLocation.current = true;
+    requestCurrentLocation();
   }, [requestCurrentLocation]);
 
   const locationControls = (
     <div className="map-status" role="status">
       <span>{locationMessage}</span>
       <button type="button" onClick={requestCurrentLocation}>
-        현재 위치 다시 확인
+        현재 위치 사용하기
       </button>
     </div>
   );

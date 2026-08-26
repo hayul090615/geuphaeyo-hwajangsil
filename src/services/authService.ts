@@ -15,14 +15,15 @@ export function getCurrentUser(): User | null {
 export function signUp(input: SignUpInput): User {
   const users = readUsers();
   if (users.some((user) => user.email.toLowerCase() === input.email.toLowerCase())) throw new Error('이미 가입된 이메일입니다.');
+  if (users.some((user) => user.nickname.toLowerCase() === input.nickname.toLowerCase())) throw new Error('이미 사용 중인 닉네임입니다.');
   const user: StoredUser = { id: crypto.randomUUID(), ...input };
   localStorage.setItem(USERS_KEY, JSON.stringify([...users, user]));
   return user;
 }
 
-export function signIn(email: string, password: string): User {
-  const user = readUsers().find((item) => item.email.toLowerCase() === email.toLowerCase() && item.password === password);
-  if (!user) throw new Error('이메일 또는 비밀번호를 확인해 주세요.');
+export function signIn(nickname: string, password: string): User {
+  const user = readUsers().find((item) => item.nickname.toLowerCase() === nickname.trim().toLowerCase() && item.password === password);
+  if (!user) throw new Error('닉네임 또는 비밀번호를 확인해 주세요.');
   const session: User = { id: user.id, email: user.email, nickname: user.nickname };
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   return session;

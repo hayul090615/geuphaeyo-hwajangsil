@@ -21,7 +21,7 @@ const TOILET_SEARCH_KEYWORDS = [
   '공원 화장실',
   '주민센터 화장실',
 ];
-const SEARCH_PAGE_COUNT = 1;
+const SEARCH_PAGE_COUNT = 2;
 const WIDE_SEARCH_GRID_SIZE = 3;
 const NEARBY_SEARCH_GRID_SIZE = 2;
 const SEARCH_CONCURRENCY = 10;

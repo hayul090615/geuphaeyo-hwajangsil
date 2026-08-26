@@ -76,6 +76,7 @@ export default function Home({ onLogout }: HomeProps) {
   const [requestMessage, setRequestMessage] = useState('');
   const [requestRecipient, setRequestRecipient] = useState<'hayul9888@gmail.com' | 'sg8111320@gmail.com'>('hayul9888@gmail.com');
   const [requestState, setRequestState] = useState('');
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   useEffect(() => {
     void getNearbyToilets().then((items) => setToilets([...loadSubmitted(), ...items]));
@@ -175,7 +176,7 @@ export default function Home({ onLogout }: HomeProps) {
     <div className="page">
       <div className="top-strip" />
       <div className="app-shell">
-        <Header onRequestOpen={() => setIsRequestOpen(true)} onAddOpen={() => setIsAddOpen(true)} onLogout={onLogout} />
+        <Header onRequestOpen={() => setIsRequestOpen(true)} onAddOpen={() => setIsAddOpen(true)} onLogout={() => setIsLogoutOpen(true)} />
         <main>
           <section className="hero">
             <p className="eyebrow">급할 때, 가까운 곳부터</p>
@@ -288,6 +289,22 @@ export default function Home({ onLogout }: HomeProps) {
                 <button className="submit-button" type="submit">운영팀에 보내기</button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {isLogoutOpen && (
+        <div className="modal-backdrop" onMouseDown={() => setIsLogoutOpen(false)}>
+          <section className="add-modal logout-modal" role="dialog" aria-modal="true" aria-labelledby="logout-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div><p>로그아웃 확인</p><h2 id="logout-modal-title">로그아웃할까요?</h2></div>
+              <button type="button" onClick={() => setIsLogoutOpen(false)} aria-label="닫기">×</button>
+            </div>
+            <p className="modal-description">로그아웃하면 다시 로그인해야 서비스를 이용할 수 있습니다.</p>
+            <div className="logout-confirm-actions">
+              <button className="cancel-button" type="button" onClick={() => setIsLogoutOpen(false)}>아니요</button>
+              <button className="submit-button" type="button" onClick={onLogout}>예</button>
+            </div>
           </section>
         </div>
       )}

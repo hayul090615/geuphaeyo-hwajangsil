@@ -28,6 +28,7 @@ const SEARCH_CONCURRENCY = 6;
 const SEOUL_MAP_LEVEL = 8;
 const NEARBY_MAP_LEVEL = 5;
 const LONG_DISTANCE_CAR_THRESHOLD_METERS = 20_000;
+const MAX_AUTO_LOCATION_ACCURACY_METERS = 150;
 const DIRECTIONS_MODES: { mode: DirectionsMode; label: string; icon: string }[] = [
   { mode: 'walk', label: '도보', icon: '🚶' },
   { mode: 'bicycle', label: '자전거', icon: '🚲' },
@@ -181,6 +182,16 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     setStatusMessage('현재 위치를 확인하는 중입니다.');
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
+        if (!Number.isFinite(coords.accuracy) || coords.accuracy > MAX_AUTO_LOCATION_ACCURACY_METERS) {
+          const accuracyText = Number.isFinite(coords.accuracy)
+            ? `GPS 오차 범위가 약 ${Math.round(coords.accuracy)}m로 큽니다.`
+            : '현재 위치 정확도를 확인할 수 없습니다.';
+          const message = `${accuracyText} 지도에서 실제 위치를 직접 선택해 주세요.`;
+          setStatusMessage(message);
+          onLocationError?.(message);
+          return;
+        }
+
         const position = { lat: coords.latitude, lng: coords.longitude, accuracy: coords.accuracy };
         searchSequence.current += 1;
         setCurrentPosition(position);
@@ -439,15 +450,11 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     requestCurrentLocation(
       (origin) => {
         if (directionsTargetRef.current?.id !== toilet.id) return;
-        if (origin.accuracy !== undefined && origin.accuracy > 150) {
-          setIsSelectingOrigin(true);
-          setRouteMessage(`GPS 오차 범위가 약 ${Math.round(origin.accuracy)}m로 큽니다. 지도에서 실제 출입구나 도로를 선택해 주세요.`);
-          return;
-        }
         loadRecommendedDirections(origin);
       },
       (message) => {
         if (directionsTargetRef.current?.id === toilet.id) {
+          setIsSelectingOrigin(true);
           setRouteMessage(message);
         }
       },

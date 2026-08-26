@@ -7,6 +7,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; background: #dce9f7; }
+.page { min-width: 1200px; }
 button, input { font: inherit; }
 button { cursor: pointer; }
 
@@ -17,7 +18,7 @@ button { cursor: pointer; }
 }
 
 .app-shell {
-  width: min(50vw, 960px);
+  width: 960px;
   min-height: calc(100vh - 28px);
   padding: 0 clamp(24px, 3vw, 56px) 56px;
   margin: 0 auto;
@@ -152,7 +153,7 @@ button { cursor: pointer; }
 .service-guide strong { font-size: 9px; }
 .service-guide li span { color: #7b8793; font-size: 8px; line-height: 1.45; }
 
-.toilet-section { padding-bottom: 40px; }
+.toilet-section { padding-bottom: 0; }
 .section-title {
   display: flex;
   align-items: flex-start;
@@ -168,6 +169,12 @@ button { cursor: pointer; }
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 9px;
+}
+
+.list-end-line {
+  height: 1px;
+  margin-top: 28px;
+  background: #dfe4ea;
 }
 
 .toilet-card {
@@ -342,24 +349,3 @@ button { cursor: pointer; }
   line-height: 1.45;
 }
 .request-modal select,.request-modal textarea,.request-modal input{width:100%;padding:11px 12px;border:1px solid #dfe4e9;border-radius:8px;outline:0;background:#fff;color:#172534;font:inherit;font-size:12px}.request-modal textarea{min-height:130px;resize:vertical;line-height:1.55}.request-status{margin:0;padding:10px 12px;border-radius:8px;background:#f5f7f9;color:#4e5e70;font-size:11px;font-weight:700}
-
-@media (max-width: 760px) {
-  .app-shell { width: 100%; padding-inline: 20px; }
-  .hero { padding-top: 28px; }
-  .hero h1 { font-size: clamp(33px, 10vw, 43px); }
-  .desktop-break { display: none; }
-  .service-guide { grid-template-columns: 1fr; gap: 18px; }
-  .service-guide ol { grid-template-columns: 1fr; }
-  .service-guide li { min-height: 38px; }
-  .toilet-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (max-width: 430px) {
-  .top-strip { height: 18px; }
-  .site-header { height: 58px; }
-  .toilet-list { grid-template-columns: 1fr; }
-  .check-row { align-items: flex-start; flex-direction: column; gap: 10px; }
-  .form-grid { grid-template-columns: 1fr; }
-  .full-field { grid-column: auto; }
-  .add-modal { padding: 22px 18px; }
-}

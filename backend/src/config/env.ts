@@ -2,6 +2,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const databaseUrl = process.env.DATABASE_URL?.trim() || undefined;
+
 function getEnv(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
 
@@ -24,19 +26,12 @@ function getPort(): number {
 
 export const env = {
   db: {
+    connectionString: databaseUrl,
     host: getEnv('DB_HOST', 'localhost'),
     port: getPort(),
     name: getEnv('DB_NAME', 'geuphaeyo'),
     user: getEnv('DB_USER', 'postgres'),
-    password: getEnv('DB_PASSWORD'),
+    password: getEnv('DB_PASSWORD', databaseUrl ? 'unused' : undefined),
     ssl: process.env.DB_SSL === 'true'
-  },
-  kakaoRestApiKey: getEnv('KAKAO_REST_API_KEY'),
-  frontendOrigins: getEnv(
-    'FRONTEND_ORIGINS',
-    'http://localhost:5173,https://geuphaeyo-hwajangsil-integration-fr.vercel.app'
-  )
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean)
+  }
 } as const;

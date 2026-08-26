@@ -1,21 +1,78 @@
 import type { Toilet } from '../types/toilet';
-const mockToilets: Toilet[] = [
-  {id:'1',name:'시청역 공중화장실',address:'서울 중구 세종대로 110',distance:'120m',openAllDay:true,accessible:true,latitude:37.5663,longitude:126.9779},
-  {id:'2',name:'서울광장 화장실',address:'서울 중구 을지로 12',distance:'350m',openAllDay:true,accessible:false,latitude:37.5658,longitude:126.9781},
-  {id:'3',name:'덕수궁 돌담길 화장실',address:'서울 중구 세종대로 99',distance:'520m',openAllDay:false,accessible:true,latitude:37.5657,longitude:126.9753},
-  {id:'4',name:'을지로입구역 화장실',address:'서울 중구 을지로 42',distance:'680m',openAllDay:true,accessible:true,latitude:37.5660,longitude:126.9822},
-  {id:'5',name:'명동입구 공중화장실',address:'서울 중구 남대문로 84',distance:'790m',openAllDay:false,accessible:false,latitude:37.5638,longitude:126.9833},
-  {id:'6',name:'청계광장 화장실',address:'서울 중구 태평로1가 1',distance:'860m',openAllDay:true,accessible:true,latitude:37.5691,longitude:126.9785},
-  {id:'7',name:'서울도서관 화장실',address:'서울 중구 세종대로 110',distance:'920m',openAllDay:false,accessible:true,latitude:37.5665,longitude:126.9780},
-  {id:'8',name:'남대문시장 화장실',address:'서울 중구 남대문시장4길 21',distance:'1.1km',openAllDay:false,accessible:false,latitude:37.5595,longitude:126.9770},
-  {id:'9',name:'광화문광장 화장실',address:'서울 종로구 세종대로 175',distance:'1.2km',openAllDay:true,accessible:true,latitude:37.5718,longitude:126.9764},
-  {id:'10',name:'종각역 화장실',address:'서울 종로구 종로 33',distance:'1.3km',openAllDay:true,accessible:true,latitude:37.5702,longitude:126.9830},
-  {id:'11',name:'회현역 화장실',address:'서울 중구 퇴계로 54',distance:'1.4km',openAllDay:true,accessible:false,latitude:37.5588,longitude:126.9781},
-  {id:'12',name:'한국은행 앞 화장실',address:'서울 중구 남대문로 39',distance:'1.5km',openAllDay:false,accessible:true,latitude:37.5628,longitude:126.9807},
-  {id:'13',name:'인사동 문화화장실',address:'서울 종로구 인사동길 12',distance:'1.6km',openAllDay:false,accessible:false,latitude:37.5722,longitude:126.9856},
-  {id:'14',name:'서소문공원 화장실',address:'서울 중구 칠패로 5',distance:'1.7km',openAllDay:true,accessible:true,latitude:37.5606,longitude:126.9721},
-  {id:'15',name:'서울역 광장 화장실',address:'서울 용산구 한강대로 405',distance:'1.8km',openAllDay:true,accessible:true,latitude:37.5559,longitude:126.9707},
-  {id:'16',name:'정동길 화장실',address:'서울 중구 정동길 21',distance:'1.9km',openAllDay:false,accessible:true,latitude:37.5651,longitude:126.9730},
-];
-// 추후 백엔드 API 호출로 교체할 수 있도록 데이터 접근을 별도 서비스로 분리합니다.
-export async function getNearbyToilets(): Promise<Toilet[]> { return Promise.resolve(mockToilets); }
+
+const places = [
+  ['시청역 공중화장실', '서울 중구 세종대로 110', '120m', true, true],
+  ['서울광장 화장실', '서울 중구 을지로 12', '350m', true, false],
+  ['덕수궁 돌담길 화장실', '서울 중구 세종대로 99', '520m', false, true],
+  ['을지로입구역 화장실', '서울 중구 을지로 42', '680m', true, true],
+  ['명동입구 공중화장실', '서울 중구 남대문로 84', '790m', false, false],
+  ['청계광장 화장실', '서울 중구 태평로1가 1', '860m', true, true],
+  ['서울도서관 화장실', '서울 중구 세종대로 110', '920m', false, true],
+  ['남대문시장 화장실', '서울 중구 남대문시장길 21', '1.1km', false, false],
+  ['광화문광장 화장실', '서울 종로구 세종대로 175', '1.2km', true, true],
+  ['종각역 화장실', '서울 종로구 종로 33', '1.3km', true, true],
+  ['회현역 화장실', '서울 중구 퇴계로 54', '1.4km', true, false],
+  ['한국은행 앞 화장실', '서울 중구 남대문로 39', '1.5km', false, true],
+  ['인사동 문화화장실', '서울 종로구 인사동길 12', '1.6km', false, false],
+  ['서소문공원 화장실', '서울 중구 칠패로 5', '1.7km', true, true],
+  ['서울역 광장 화장실', '서울 용산구 한강대로 405', '1.8km', true, true],
+  ['정동길 화장실', '서울 중구 정동길 21', '1.9km', false, true],
+] as const;
+
+const mockToilets: Toilet[] = places.map(([name, address, distance, openAllDay, accessible], index) => ({
+  id: String(index + 1),
+  name,
+  address,
+  distance,
+  openAllDay,
+  accessible,
+  latitude: 37.5663 + index * 0.0004,
+  longitude: 126.9779 + index * 0.0003,
+}));
+
+type ApiToilet = {
+  id: string | number;
+  name: string;
+  address: string;
+  latitude: string | number;
+  longitude: string | number;
+  open_24h: boolean | null;
+  opening_hours: string | null;
+  accessible: boolean | null;
+  distance_meters: string | number | null;
+  diaper_changing_table_available: boolean | null;
+};
+
+const DEFAULT_API_URL = window.location.hostname === 'localhost'
+  ? 'http://localhost:3000'
+  : 'https://geuphaeyo-hwajangsil-api.onrender.com';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL).replace(/\/$/, '');
+
+function formatDistance(value: ApiToilet['distance_meters']): string {
+  const meters = Number(value);
+  if (!Number.isFinite(meters)) return '거리 확인 중';
+  return meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${Math.round(meters)}m`;
+}
+
+export async function getNearbyToilets(): Promise<Toilet[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/toilets`);
+    if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+    const rows = await response.json() as ApiToilet[];
+    return rows.map((row) => ({
+      id: String(row.id),
+      name: row.name,
+      address: row.address,
+      distance: formatDistance(row.distance_meters),
+      openAllDay: row.open_24h === true,
+      hours: row.opening_hours || undefined,
+      accessible: row.accessible === true,
+      babyFacility: row.diaper_changing_table_available === true,
+      latitude: Number(row.latitude),
+      longitude: Number(row.longitude),
+    }));
+  } catch (error) {
+    console.warn('Backend API is unavailable; using the bundled toilet list.', error);
+    return mockToilets;
+  }
+}

@@ -1,3 +1,15 @@
 @import './layout.css';
 
 .auth-page{position:fixed;inset:0;overflow-y:auto;display:grid;place-items:center;padding:20px 16px;background:linear-gradient(145deg,#fff7f4,#f4f7fa)}.auth-card{width:min(100%,360px);padding:28px 27px;background:#fff;border:1px solid #edf0f2;border-radius:18px;box-shadow:0 18px 50px #21304414}.auth-brand{display:inline-block;color:#17202a;font-size:18px;font-weight:900;text-decoration:none;letter-spacing:-1px}.auth-brand span{color:#ff5d4c}.auth-eyebrow{margin:24px 0 7px;color:#ff5d4c;font-size:10px;font-weight:800}.auth-card h1{margin:0;color:#17202a;font-size:25px;letter-spacing:-1.3px}.auth-description{margin:7px 0 18px;color:#7b8793;font-size:12px}.auth-form{display:grid;gap:12px}.auth-form label{display:grid;gap:6px;color:#53606d;font-size:11px;font-weight:700}.auth-form input{width:100%;padding:10px 12px;border:1px solid #e1e5ea;border-radius:8px;outline:0;color:#17202a;font:inherit;font-size:12px;font-weight:400}.auth-form input:focus{border-color:#ff8c80;box-shadow:0 0 0 3px #ff5d4c18}.auth-submit{margin-top:2px;border:0;border-radius:8px;padding:11px;background:#ff5d4c;color:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}.auth-submit:hover{background:#ed4f3f}.auth-error{margin:0;color:#d53d34;font-size:11px;font-weight:600}.auth-switch{margin:17px 0 0;color:#7b8793;text-align:center;font-size:11px}.auth-switch button{border:0;background:transparent;color:#ff5d4c;font:inherit;font-weight:800;cursor:pointer}.auth-divider{display:flex;align-items:center;gap:10px;margin:15px 0;color:#a1aab4;font-size:10px}.auth-divider:before,.auth-divider:after{content:"";height:1px;flex:1;background:#e8ebee}.google-login-button{min-height:40px;display:flex;justify-content:center}.google-setup-note{margin:0;padding:9px;border-radius:7px;background:#f5f7f9;color:#7b8793;text-align:center;font-size:10px;line-height:1.45}
+
+.auth-card { width: min(100%, 460px); padding: 40px 38px; border-radius: 24px; }
+.auth-brand { font-size: 23px; }
+.auth-eyebrow { margin-top: 30px; font-size: 13px; }
+.auth-card h1 { font-size: 34px; }
+.auth-description { margin: 10px 0 24px; font-size: 15px; }
+.auth-form { gap: 16px; }
+.auth-form label { gap: 8px; font-size: 14px; }
+.auth-form input { padding: 14px 15px; font-size: 15px; }
+.auth-submit { padding: 15px; font-size: 15px; }
+.auth-switch { margin-top: 22px; font-size: 14px; }
+.auth-divider { margin: 20px 0; font-size: 12px; }

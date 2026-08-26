@@ -321,7 +321,7 @@ button { cursor: pointer; }
 .full-field { grid-column: 1 / -1; }
 .option-checks { flex-wrap: wrap; padding: 6px 0; }
 .option-checks input[type="checkbox"] { width: 18px; height: 18px; }
-.rule-agreement {
+.add-form > .rule-agreement {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -330,11 +330,12 @@ button { cursor: pointer; }
   border-radius: 8px;
   background: #f5f7f9;
   color: #4c5b6b;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   line-height: 1.45;
 }
-.rule-agreement input { flex: none; width: 26px; height: 26px; margin: 0; accent-color: #ff594d; }
+.add-form > .rule-agreement span { flex: 1; text-align: left; }
+.add-form > .rule-agreement input { flex: none; width: 26px; height: 26px; margin: 0 0 0 auto; accent-color: #ff594d; }
 .form-error {
   margin: 0;
   padding: 10px 12px;

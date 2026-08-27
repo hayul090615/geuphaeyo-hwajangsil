@@ -51,6 +51,22 @@
   cursor: pointer;
 }
 
+.customer-service-button {
+  padding: 8px 13px;
+  border: 1px solid #e1e5ea;
+  border-radius: 18px;
+  background: #17202a;
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.customer-service-button:hover {
+  background: #303b46;
+}
+
 .map-home-main {
   display: grid;
   height: calc(100dvh - 68px + var(--map-page-extension));
@@ -395,6 +411,12 @@
   color: #e7ebef;
 }
 
+[data-theme='dark'] .customer-service-button {
+  border-color: #495460;
+  background: #edf1f5;
+  color: #17202a;
+}
+
 [data-theme='dark'] .search-bar button,
 [data-theme='dark'] .map-route-summary em {
   background: #303944;
@@ -471,6 +493,10 @@
   }
 
   .theme-toggle {
+    padding: 7px 10px;
+  }
+
+  .customer-service-button {
     padding: 7px 10px;
   }
 

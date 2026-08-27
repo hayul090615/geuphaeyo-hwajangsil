@@ -1,0 +1,493 @@
+.service-page {
+  min-height: 100vh;
+  background: #e5eef8;
+  color: #0f1d2d;
+}
+
+.service-page-header,
+.service-page-main {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+  background: #fff;
+}
+
+.service-page-header {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 42px;
+  border-bottom: 1px solid #edf0f2;
+}
+
+.service-brand {
+  border: 0;
+  background: transparent;
+  color: #17202a;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+.service-brand span {
+  color: #ff5d4c;
+}
+
+.service-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.service-page-actions button {
+  padding: 9px 14px;
+  border: 1px solid #dfe4e9;
+  border-radius: 999px;
+  background: #fff;
+  color: #435264;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.service-page-actions .service-primary-button {
+  border-color: #17202a;
+  background: #17202a;
+  color: #fff;
+}
+
+.service-page-actions .service-back-button {
+  color: #e95041;
+}
+
+.service-page-actions .service-logout-button {
+  border-color: transparent;
+  color: #7a8795;
+}
+
+.service-page-main {
+  min-height: calc(100vh - 76px);
+  padding: 46px 62px 70px;
+}
+
+.service-hero > p,
+.service-guide > div > p,
+.service-modal-header p {
+  margin: 0 0 9px;
+  color: #ff5d4c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.service-hero h1 {
+  margin: 0 0 15px;
+  font-size: clamp(38px, 5vw, 55px);
+  line-height: 1.08;
+  letter-spacing: -2.8px;
+}
+
+.service-hero h1 strong {
+  color: #ff5d4c;
+}
+
+.service-hero > span {
+  display: block;
+  margin-bottom: 26px;
+  color: #637284;
+  font-size: 14px;
+}
+
+.service-search {
+  display: flex;
+  width: min(460px, 100%);
+  align-items: center;
+  gap: 11px;
+  padding: 15px 17px;
+  border: 1px solid #e0e5eb;
+  border-radius: 11px;
+  box-shadow: 0 9px 24px rgba(27, 43, 58, .05);
+}
+
+.service-search span {
+  color: #ff5d4c;
+  font-size: 22px;
+}
+
+.service-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-size: 13px;
+}
+
+.service-guide {
+  display: grid;
+  grid-template-columns: 1fr 1.8fr;
+  gap: 30px;
+  margin: 48px 0 42px;
+  padding: 24px 26px;
+  border: 1px solid #e1e5ea;
+  border-radius: 14px;
+}
+
+.service-guide h2 {
+  margin: 0;
+  font-size: 19px;
+  letter-spacing: -.8px;
+}
+
+.service-guide ol {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.service-guide li {
+  display: grid;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 2px solid #ffd4ce;
+}
+
+.service-guide li strong {
+  font-size: 12px;
+}
+
+.service-guide li span {
+  color: #74808c;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.service-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 13px;
+}
+
+.service-section-title h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.service-section-title span {
+  color: #ff5d4c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.service-toilet-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.service-page .toilet-card {
+  min-width: 0;
+  min-height: 112px;
+  padding: 16px;
+  border: 1px solid #e3e7ec;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.service-page .card-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.service-page .card-heading h3 {
+  overflow: hidden;
+  margin: 0;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-page .distance {
+  flex: none;
+  color: #ff5d4c;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.service-page .address {
+  overflow: hidden;
+  margin: 8px 0 12px;
+  color: #778596;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-page .card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.service-page .tag {
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #f1f3f5;
+  color: #7e8a96;
+  font-size: 9px;
+}
+
+.service-page .tag-open {
+  background: #fff0ee;
+  color: #e95041;
+}
+
+.service-page .pending-tag {
+  background: #fff7dc;
+  color: #806000;
+}
+
+.service-empty-result {
+  padding: 40px;
+  color: #778596;
+  text-align: center;
+}
+
+.service-modal-backdrop {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 29, 45, .58);
+  backdrop-filter: blur(3px);
+}
+
+.service-modal {
+  width: min(470px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+  padding: 28px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 29, 45, .25);
+}
+
+.service-modal-wide {
+  width: min(720px, 100%);
+}
+
+.service-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.service-modal-header h2 {
+  margin: 0;
+  font-size: 25px;
+}
+
+.service-modal-header > button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f3f5;
+  color: #637080;
+  font-size: 23px;
+}
+
+.service-modal-description {
+  margin: 12px 0 22px;
+  color: #788696;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.service-form,
+.service-form > label {
+  display: grid;
+  gap: 8px;
+}
+
+.service-form {
+  gap: 15px;
+}
+
+.service-form label {
+  color: #405063;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.service-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.service-form-grid label {
+  display: grid;
+  gap: 7px;
+}
+
+.service-form input,
+.service-form select,
+.service-form textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #dfe4e9;
+  border-radius: 8px;
+  outline: 0;
+  background: #fff;
+  color: #172534;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.service-form textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.service-form input:focus,
+.service-form select:focus,
+.service-form textarea:focus {
+  border-color: #ff776d;
+  box-shadow: 0 0 0 3px rgba(255, 89, 77, .1);
+}
+
+.service-form input:disabled {
+  background: #f3f5f7;
+}
+
+.service-full-field {
+  grid-column: 1 / -1;
+}
+
+.service-check-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.service-check-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.service-check-row input,
+.service-agreement input {
+  width: 18px;
+  height: 18px;
+  accent-color: #ff5d4c;
+}
+
+.service-agreement {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f5f7f9;
+}
+
+.service-form-status {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff0ee;
+  color: #d84339;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.service-form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.7fr;
+  gap: 9px;
+}
+
+.service-form-actions button {
+  padding: 12px;
+  border: 0;
+  border-radius: 9px;
+  background: #f0f2f4;
+  color: #647180;
+  font: inherit;
+  font-weight: 800;
+}
+
+.service-form-actions .service-submit-button {
+  background: #ff594d;
+  color: #fff;
+}
+
+.service-logout-modal {
+  width: min(400px, 100%);
+}
+
+@media (max-width: 900px) {
+  .service-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 26px;
+  }
+
+  .service-page-actions {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .service-page-actions button {
+    flex: none;
+  }
+
+  .service-page-main {
+    padding: 36px 30px 55px;
+  }
+
+  .service-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .service-toilet-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .service-page-header,
+  .service-page-main {
+    width: 100%;
+  }
+
+  .service-page-main {
+    padding: 32px 18px 50px;
+  }
+
+  .service-hero h1 {
+    font-size: 36px;
+  }
+
+  .service-guide ol,
+  .service-toilet-list,
+  .service-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .service-full-field {
+    grid-column: auto;
+  }
+}

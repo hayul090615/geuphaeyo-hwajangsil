@@ -5,7 +5,11 @@ import SearchBar from '../components/SearchBar';
 import { getNearbyToilets } from '../services/toiletService';
 import type { Toilet } from '../types/toilet';
 
-export default function Home() {
+type HomeProps = {
+  onServiceOpen: () => void;
+};
+
+export default function Home({ onServiceOpen }: HomeProps) {
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [toilets, setToilets] = useState<Toilet[]>([]);
@@ -25,7 +29,11 @@ export default function Home() {
 
   return (
     <div className="map-home">
-      <Header isDarkMode={isDarkMode} onThemeToggle={() => setIsDarkMode((current) => !current)} />
+      <Header
+        isDarkMode={isDarkMode}
+        onThemeToggle={() => setIsDarkMode((current) => !current)}
+        onServiceOpen={onServiceOpen}
+      />
       <main className="map-home-main">
         <section className="map-home-toolbar" aria-label="화장실 검색">
           <SearchBar value={query} onChange={setQuery} onSubmit={setSubmittedQuery} />

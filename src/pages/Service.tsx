@@ -11,9 +11,12 @@ type ServiceProps = {
 type ToiletForm = {
   name: string;
   address: string;
+  facilityType: NonNullable<Toilet['facilityType']>;
   locationDetail: string;
   openAllDay: boolean;
-  hours: string;
+  openTime: string;
+  closeTime: string;
+  genderType: NonNullable<Toilet['genderType']>;
   accessible: boolean;
   babyFacility: boolean;
   note: string;
@@ -27,9 +30,12 @@ const REQUEST_KEY = 'geuphaeyo-service-requests';
 const initialForm = (): ToiletForm => ({
   name: '',
   address: '',
+  facilityType: 'public',
   locationDetail: '',
   openAllDay: false,
-  hours: '',
+  openTime: '09:00',
+  closeTime: '18:00',
+  genderType: 'unknown',
   accessible: false,
   babyFacility: false,
   note: '',
@@ -91,8 +97,8 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
       setFormError('이미 등록된 이름 또는 주소입니다.');
       return;
     }
-    if (!form.openAllDay && !form.hours.trim()) {
-      setFormError('24시간 운영이 아니라면 이용 가능한 시간을 입력해 주세요.');
+    if (!form.openAllDay && (!form.openTime || !form.closeTime)) {
+      setFormError('24시간 운영이 아니라면 시작 시간과 종료 시간을 입력해 주세요.');
       return;
     }
     if (!form.agreed) {
@@ -105,9 +111,11 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
       name: form.name.trim(),
       address: form.address.trim(),
       distance: '거리 확인 중',
+      facilityType: form.facilityType,
       locationDetail: form.locationDetail.trim(),
       openAllDay: form.openAllDay,
-      hours: form.openAllDay ? '24시간' : form.hours.trim(),
+      hours: form.openAllDay ? '24시간' : `${form.openTime}~${form.closeTime}`,
+      genderType: form.genderType,
       accessible: form.accessible,
       babyFacility: form.babyFacility,
       note: form.note.trim(),
@@ -188,9 +196,33 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
             <form className="service-form" onSubmit={addToilet}>
               <div className="service-form-grid">
                 <label>화장실 이름 *<input autoFocus required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
-                <label>도로명 주소 *<input required value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></label>
+                <label>시설 유형 *
+                  <select value={form.facilityType} onChange={(event) => setForm({ ...form, facilityType: event.target.value as ToiletForm['facilityType'] })}>
+                    <option value="public">공중화장실</option>
+                    <option value="building">건물 내부</option>
+                    <option value="station">역·터미널</option>
+                    <option value="park">공원</option>
+                    <option value="other">기타</option>
+                  </select>
+                </label>
+                <label className="service-full-field">도로명 주소 *<input required value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></label>
                 <label>상세 위치<input value={form.locationDetail} onChange={(event) => setForm({ ...form, locationDetail: event.target.value })} /></label>
-                <label>운영시간 *<input disabled={form.openAllDay} required={!form.openAllDay} value={form.openAllDay ? '24시간' : form.hours} onChange={(event) => setForm({ ...form, hours: event.target.value })} placeholder="예: 09:00~22:00" /></label>
+                <label>남녀 구분 *
+                  <select value={form.genderType} onChange={(event) => setForm({ ...form, genderType: event.target.value as ToiletForm['genderType'] })}>
+                    <option value="unknown">확인하지 못함</option>
+                    <option value="separated">남녀 분리</option>
+                    <option value="unisex">남녀 공용</option>
+                  </select>
+                </label>
+                <fieldset className="service-time-field service-full-field" disabled={form.openAllDay}>
+                  <legend>운영시간 *</legend>
+                  <div>
+                    <label>시작<input type="time" required={!form.openAllDay} value={form.openTime} onChange={(event) => setForm({ ...form, openTime: event.target.value })} /></label>
+                    <span aria-hidden="true">~</span>
+                    <label>종료<input type="time" required={!form.openAllDay} value={form.closeTime} onChange={(event) => setForm({ ...form, closeTime: event.target.value })} /></label>
+                  </div>
+                  {form.openAllDay && <small>24시간 운영으로 설정되었습니다.</small>}
+                </fieldset>
                 <label className="service-full-field">추가 설명<textarea maxLength={300} value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} /></label>
               </div>
               <div className="service-check-row">

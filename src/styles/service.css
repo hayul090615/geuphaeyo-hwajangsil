@@ -430,8 +430,7 @@
   gap: 6px;
 }
 
-.service-check-row input,
-.service-agreement input {
+.service-check-row input {
   width: 18px;
   height: 18px;
   accent-color: #ff5d4c;
@@ -441,10 +440,26 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px;
+  gap: 24px;
+  padding: 18px 20px;
   border-radius: 8px;
   background: #f5f7f9;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.service-agreement span {
+  flex: 1;
+}
+
+.service-agreement input {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  margin: 0 0 0 auto;
+  accent-color: #ff5d4c;
 }
 
 .service-form-status {

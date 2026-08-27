@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 import type { User } from "../types/auth";
-import { signIn, signUp } from "../services/authService";
+import { signIn, signInWithGoogleCredential, signUp } from "../services/authService";
 
 type AuthProps = { mode: "login" | "signup"; onModeChange: (mode: "login" | "signup") => void; onSuccess: (user: User) => void };
 
@@ -9,6 +10,17 @@ export default function Auth({ mode, onModeChange, onSuccess }: AuthProps) {
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState("");
+
+  const handleGoogleCredential = useCallback((credential: string) => {
+    setError("");
+    try {
+      onSuccess(signInWithGoogleCredential(credential));
+    } catch (googleError) {
+      setError(googleError instanceof Error ? googleError.message : "Google 로그인에 실패했습니다.");
+    }
+  }, [onSuccess]);
+
+  const handleGoogleError = useCallback((message: string) => setError(message), []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
@@ -33,7 +45,9 @@ export default function Auth({ mode, onModeChange, onSuccess }: AuthProps) {
       {error && <p className="auth-error" role="alert">{error}</p>}
       <button className="auth-submit" type="submit">{mode === "login" ? "로그인" : "회원가입"}</button>
     </form>
+    <div className="auth-divider"><span>또는</span></div>
+    <GoogleSignInButton onCredential={handleGoogleCredential} onError={handleGoogleError} />
     <p className="auth-switch">{mode === "login" ? "아직 계정이 없나요?" : "이미 계정이 있나요?"} <button type="button" onClick={() => { setError(""); onModeChange(mode === "login" ? "signup" : "login"); }}>{mode === "login" ? "회원가입" : "로그인"}</button></p>
-    <p className="auth-note">현재는 테스트용 임시 인증입니다. 백엔드 API가 준비되면 서비스 함수만 교체합니다.</p>
+    <p className="auth-note">현재는 테스트용 임시 세션입니다. 실제 서비스에서는 Google ID 토큰을 백엔드에서 검증해야 합니다.</p>
   </section></main>;
 }

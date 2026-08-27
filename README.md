@@ -1,6 +1,290 @@
-# React 프론트엔드 프로젝트
+# 급해요 화장실 — Service Frontend & Backend
 
-React와 TypeScript를 기반으로 제작하는 프론트엔드 프로젝트입니다.
+사용자의 현재 위치를 기준으로 주변 화장실을 검색하고, 위치 정보와 도보 경로를 제공하는 지도 기반 웹 서비스입니다.
+
+- 서비스 주소: https://geuphaeyo-hwajangsil-integration-fr.vercel.app
+- 작업 브랜치: `feature/service-frontend-backend`
+- 개발 인원 및 기간: 2명, 4주
+
+## 핵심 기능
+
+- 카카오맵 기반 화장실 장소 검색과 마커 클러스터링
+- 브라우저 GPS를 이용한 현재 위치 표시
+- 현재 지도 영역 재검색 및 지역명 검색
+- 화장실 목록·마커·상세 팝업 연동
+- 현재 위치 기준 추천 화장실 직선거리 계산
+- 선택한 화장실까지 도보 경로, 거리, 예상 시간 표시
+- 지도에서 실제 출발 위치 직접 조정
+- 고객센터 추천 화장실 16곳과 위치 팝업
+- 추천 화장실에서 내부 메인 지도로 이동
+- 로그인·회원가입·Google 로그인 UI
+- 화장실 제보 및 서비스 요청사항 입력
+- 반응형 UI, 다크 모드, 일반지도·위성뷰 지원
+
+## 사용 기술
+
+| 영역 | 기술 |
+| --- | --- |
+| Frontend | React 18, Vite, TypeScript |
+| Map | Kakao Map SDK, react-kakao-maps-sdk |
+| Backend | Node.js, Express, TypeScript |
+| Database | PostgreSQL, pg |
+| Directions | Vercel Function, OSM/OSRM 기반 도보 경로 |
+| Deployment | Vercel |
+| Collaboration | Git, GitHub |
+
+## 서비스 구조
+
+```text
+사용자 브라우저
+└─ React + Vite + TypeScript
+   ├─ Home
+   │  ├─ SearchBar
+   │  └─ Map
+   │     ├─ Kakao Map SDK → 지도·장소 검색·마커
+   │     └─ directionsService → /api/directions
+   ├─ Auth
+   │  └─ authService → 현재 localStorage 기반 세션
+   └─ Service
+      ├─ toiletService → 현재 mock 추천 데이터
+      ├─ locationService → 현재 위치 기준 거리 계산
+      └─ 화장실 제보·요청사항 → 현재 localStorage 임시 저장
+
+/api/directions (Vercel Function)
+└─ backend/src/services/directions-service.ts
+   └─ 도보 경로 데이터 반환
+
+Express REST API
+└─ /toilets CRUD
+   └─ PostgreSQL public.toilets
+```
+
+프론트엔드는 PostgreSQL에 직접 접근하지 않습니다. 실제 데이터 연결은 `src/services`에서 Express API를 호출하는 방식으로 진행합니다.
+
+## 프로젝트 파일 구조
+
+```text
+.
+├─ api/
+│  └─ directions.ts                  # Vercel 도보 길찾기 함수
+├─ backend/
+│  ├─ src/
+│  │  ├─ config/env.ts               # 백엔드 환경변수
+│  │  ├─ db/
+│  │  │  ├─ pool.ts                  # PostgreSQL 연결 풀
+│  │  │  └─ test-connection.ts       # DB 연결 확인
+│  │  ├─ routes/directions.ts        # 길찾기 라우터
+│  │  ├─ services/directions-service.ts
+│  │  └─ server.ts                   # Express 서버와 toilets CRUD
+│  ├─ sql/
+│  │  ├─ 001_create_database.sql
+│  │  ├─ 002_create_tables.sql
+│  │  ├─ 003_seed_restrooms.sql
+│  │  └─ 004_migrate_to_toilets.sql
+│  └─ package.json
+├─ src/
+│  ├─ components/
+│  │  ├─ Header.tsx
+│  │  ├─ Map.tsx                     # 지도 검색·마커·도보 길찾기
+│  │  ├─ SearchBar.tsx
+│  │  ├─ ToiletCard.tsx
+│  │  ├─ ToiletLocationMap.tsx
+│  │  └─ GoogleSignInButton.tsx
+│  ├─ pages/
+│  │  ├─ Home.tsx                    # 메인 지도 페이지
+│  │  ├─ Auth.tsx                    # 로그인·회원가입
+│  │  └─ Service.tsx                 # 고객센터·추천·제보
+│  ├─ services/
+│  │  ├─ authService.ts              # 현재 로컬 인증 처리
+│  │  ├─ directionsService.ts        # 도보 경로 API 호출
+│  │  ├─ locationService.ts          # 좌표 거리 계산
+│  │  └─ toiletService.ts            # 현재 mock 화장실 데이터
+│  ├─ styles/
+│  ├─ types/
+│  │  ├─ auth.ts
+│  │  └─ toilet.ts
+│  ├─ RootApp.tsx                    # map/auth/service 화면 전환
+│  └─ main.tsx
+├─ .env.example
+├─ vercel.json
+└─ package.json
+```
+
+루트에 남아 있는 기존 파일은 이전 구조와의 호환 및 개발 기록을 위해 유지합니다. 현재 프론트엔드 진입점과 주요 코드는 `src` 아래에 있습니다.
+
+## 주요 데이터 구조
+
+### 프론트엔드 Toilet
+
+```ts
+type Toilet = {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  distance: string;
+  openAllDay: boolean;
+  accessible: boolean;
+  hours?: string;
+  facilityType?: 'public' | 'building' | 'station' | 'park' | 'other';
+  locationDetail?: string;
+  genderType?: 'separated' | 'unisex' | 'unknown';
+  babyFacility?: boolean;
+  status?: 'pending' | 'approved';
+};
+```
+
+### 프론트엔드와 DB 필드 대응
+
+| Frontend | PostgreSQL | 설명 |
+| --- | --- | --- |
+| `id` | `id` | 고유 식별자 |
+| `name` | `name` | 화장실 이름 |
+| `address` | `address` | 주소 |
+| `latitude` | `latitude` | 위도 |
+| `longitude` | `longitude` | 경도 |
+| `openAllDay` | `open_24h` | 24시간 운영 여부 |
+| `hours` | `opening_hours` | 운영시간 |
+| `accessible` | `accessible` | 장애인 접근 가능 여부 |
+| `babyFacility` | `diaper_changing_table_available` | 기저귀 교환대 |
+
+현재 위치에 따라 달라지는 `distance`는 고정 시설 정보가 아니므로 프론트엔드에서 실행 시 계산합니다. 사용자의 현재 위치는 데이터베이스에 영구 저장하지 않습니다.
+
+PostgreSQL에는 계단 수, 비밀번호 필요 여부, 남녀 화장실 수, 비상벨 여부 등 추가 편의정보도 저장할 수 있습니다.
+
+## API
+
+### 화장실 API
+
+| Method | Endpoint | 설명 |
+| --- | --- | --- |
+| `GET` | `/toilets` | 전체 화장실 조회 |
+| `GET` | `/toilets/:id` | 화장실 상세 조회 |
+| `POST` | `/toilets` | 화장실 등록 |
+| `PATCH` | `/toilets/:id` | 화장실 수정 |
+| `DELETE` | `/toilets/:id` | 화장실 삭제 |
+
+### 도보 길찾기 API
+
+`POST /api/directions`
+
+```json
+{
+  "origin": { "latitude": 37.5665, "longitude": 126.9780 },
+  "destination": {
+    "latitude": 37.5663,
+    "longitude": 126.9779,
+    "name": "시청역 공중화장실"
+  },
+  "mode": "walk"
+}
+```
+
+응답에는 도보 거리, 예상 시간, 지도에 표시할 경로 좌표가 포함됩니다.
+
+## 실행 방법
+
+### 프론트엔드
+
+```bash
+npm ci
+npm run dev
+```
+
+프로덕션 빌드 검증:
+
+```bash
+npm run build
+```
+
+필요한 프론트엔드 환경변수:
+
+```env
+VITE_KAKAO_MAP_KEY=example
+VITE_GOOGLE_CLIENT_ID=example
+VITE_API_BASE_URL=http://localhost:3000
+```
+
+실제 비밀값이 들어 있는 `.env`, `.env.local` 파일은 Git에 커밋하지 않습니다.
+
+### 백엔드
+
+```bash
+npm --prefix backend ci
+npm --prefix backend run dev
+```
+
+타입 검사와 DB 연결 확인:
+
+```bash
+npm --prefix backend run typecheck
+npm --prefix backend run db:test
+```
+
+PostgreSQL 초기 설정:
+
+```bash
+npm --prefix backend run db:setup
+```
+
+## 현재 구현 상태
+
+### 완료
+
+- 메인 지도, 검색, 마커, 목록과 상세정보
+- 현재 위치 및 추천 화장실 거리 계산
+- 도보 전용 길찾기와 경로 시각화
+- 고객센터 추천 16곳과 내부 지도 이동
+- 로그인·회원가입·Google 로그인 화면
+- 화장실 제보와 요청사항 UI
+- 모바일 반응형 UI와 다크 모드
+- Vercel 프로덕션 배포
+- Express 화장실 CRUD 및 PostgreSQL 스키마
+
+### 임시 구현
+
+- 추천 화장실 목록: `toiletService`의 mock 데이터
+- 일반 로그인과 세션: 브라우저 `localStorage`
+- 화장실 제보와 요청사항: 브라우저 `localStorage`
+
+임시 구현은 백엔드 API가 준비되면 `src/services` 내부 구현만 교체할 수 있도록 UI와 분리했습니다.
+
+## 개발 방향
+
+### 3주차 — 프론트엔드·백엔드 통합
+
+1. 프론트엔드 `camelCase`와 DB `snake_case` 변환 규칙 확정
+2. `GET /toilets`를 연결해 mock 추천 데이터를 실제 데이터로 교체
+3. 화장실 상세조회와 신규 제보 `POST /toilets` 연결
+4. 로그인·Google ID 토큰을 백엔드에서 검증하는 인증 구조 협의
+5. 요청사항 저장 API의 요청·응답 형식 설계
+6. 위치 권한 거부, API 장애, 빈 결과 등 예외 상황 테스트
+7. PC·모바일 통합 테스트와 접근성 개선
+
+### 4주차 — 안정화 및 발표 준비
+
+1. 통합 오류와 UI 문제 수정
+2. API 입력값 검증 및 보안 점검
+3. 성능과 지도 검색 범위 최적화
+4. 최종 배포, 시연 시나리오, PPT 및 발표 자료 완성
+
+## 협업 원칙
+
+- 프론트엔드와 백엔드는 독립된 폴더와 책임 영역을 유지합니다.
+- 프론트엔드에서 PostgreSQL에 직접 접근하지 않습니다.
+- API 연결 전 요청·응답 형식과 오류 코드를 먼저 합의합니다.
+- 기능 브랜치에서 작업하고 Pull Request를 통해 병합합니다.
+- 비밀 환경변수는 커밋하지 않고 `.env.example`에는 예시만 기록합니다.
+- 프론트엔드 변경 후 `npm run build`를 실행합니다.
+- 백엔드 변경 후 `npm --prefix backend run typecheck`를 실행합니다.
+
+---
+
+<details>
+<summary>초기 프로젝트 README 기록</summary>
+
+아래 내용은 프로젝트 초기 구조와 개발 기준을 보존하기 위한 기록입니다.
 
 ## 📁 프로젝트 구조
 
@@ -232,3 +516,5 @@ npm run dev
 ### 프론트엔드와 백엔드 연결
 
 프론트엔드는 루트의 React/Vite 프로젝트로 실행하고, 백엔드는 `backend/`에서 별도 실행합니다. 실제 API 연결 시 프론트엔드의 `src/services/`에서 백엔드 REST API를 호출하며, PostgreSQL에는 프론트엔드가 직접 접근하지 않습니다.
+
+</details>

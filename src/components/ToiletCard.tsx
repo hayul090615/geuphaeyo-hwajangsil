@@ -1,8 +1,13 @@
 import type { Toilet } from '../types/toilet';
 
-export default function ToiletCard({ toilet }: { toilet: Toilet }) {
-  return (
-    <article className="toilet-card">
+type ToiletCardProps = {
+  toilet: Toilet;
+  onSelect?: (toilet: Toilet) => void;
+};
+
+export default function ToiletCard({ toilet, onSelect }: ToiletCardProps) {
+  const content = (
+    <>
       <div className="card-heading"><h3>{toilet.name}</h3><span className="distance">{toilet.distance}</span></div>
       <p className="address">{toilet.address}{toilet.locationDetail ? ` · ${toilet.locationDetail}` : ''}</p>
       <div className="card-tags">
@@ -11,6 +16,25 @@ export default function ToiletCard({ toilet }: { toilet: Toilet }) {
         {toilet.babyFacility && <span className="tag">기저귀 교환대</span>}
         {toilet.status === 'pending' && <span className="tag pending-tag">검토 중</span>}
       </div>
+    </>
+  );
+
+  if (onSelect) {
+    return (
+      <button
+        className="toilet-card toilet-card-button"
+        type="button"
+        onClick={() => onSelect(toilet)}
+        aria-label={`${toilet.name} 위치 보기`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <article className="toilet-card">
+      {content}
     </article>
   );
 }

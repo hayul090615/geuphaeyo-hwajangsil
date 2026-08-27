@@ -8,7 +8,7 @@ import {
 } from 'react-kakao-maps-sdk';
 import type { Toilet } from '../types/toilet';
 import { getDirections } from '../services/directionsService';
-import type { DirectionsMode, DirectionsRoute } from '../services/directionsService';
+import type { DirectionsRoute } from '../services/directionsService';
 
 const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY?.trim();
 const DEFAULT_POSITION = { lat: 37.566826, lng: 126.978657 };
@@ -27,13 +27,7 @@ const NEARBY_SEARCH_GRID_SIZE = 2;
 const SEARCH_CONCURRENCY = 6;
 const SEOUL_MAP_LEVEL = 8;
 const NEARBY_MAP_LEVEL = 5;
-const LONG_DISTANCE_CAR_THRESHOLD_METERS = 20_000;
 const MAX_AUTO_LOCATION_ACCURACY_METERS = 150;
-const DIRECTIONS_MODES: { mode: DirectionsMode; label: string; icon: string }[] = [
-  { mode: 'walk', label: '도보', icon: '🚶' },
-  { mode: 'bicycle', label: '자전거', icon: '🚲' },
-  { mode: 'car', label: '자동차', icon: '🚗' },
-];
 
 type Position = { lat: number; lng: number; accuracy?: number };
 type MapToilet = Position & {
@@ -47,7 +41,7 @@ type MapToilet = Position & {
   accessible?: boolean;
 };
 type RouteInfo = DirectionsRoute;
-type MapProps = { toilets: Toilet[]; query?: string };
+type MapProps = { toilets: Toilet[]; query?: string; focusedToilet?: Toilet | null };
 
 function formatDistance(distance?: string) {
   if (!distance) return undefined;
@@ -116,11 +110,7 @@ function getDistanceMeters(origin: Position, destination: Position) {
   return 6_371_000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
-function getRecommendedDirectionsMode(origin: Position, destination: Position): DirectionsMode {
-  return getDistanceMeters(origin, destination) >= LONG_DISTANCE_CAR_THRESHOLD_METERS ? 'car' : 'walk';
-}
-
-function Map({ toilets, query }: MapProps) {
+function Map({ toilets, query, focusedToilet }: MapProps) {
   if (!KAKAO_MAP_KEY) {
     return (
       <div className="map-feedback" role="alert">
@@ -130,16 +120,16 @@ function Map({ toilets, query }: MapProps) {
     );
   }
 
-  return <LoadedMap appKey={KAKAO_MAP_KEY} toilets={toilets} query={query} />;
+  return <LoadedMap appKey={KAKAO_MAP_KEY} toilets={toilets} query={query} focusedToilet={focusedToilet} />;
 }
 
-function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string }) {
+function LoadedMap({ appKey, toilets, query = '', focusedToilet }: MapProps & { appKey: string }) {
   const [loading, error] = useKakaoLoader({
     appkey: appKey,
     libraries: ['services', 'clusterer'],
   });
   const [map, setMap] = useState<kakao.maps.Map | null>(null);
-  const [mapLevel, setMapLevel] = useState(SEOUL_MAP_LEVEL);
+  const [mapLevel, setMapLevel] = useState(focusedToilet ? 3 : SEOUL_MAP_LEVEL);
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [nearbyToilets, setNearbyToilets] = useState<MapToilet[]>([]);
   const [hasCompletedSearch, setHasCompletedSearch] = useState(false);
@@ -147,9 +137,9 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
   const [directionsTarget, setDirectionsTarget] = useState<MapToilet | null>(null);
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [routeMessage, setRouteMessage] = useState('');
-  const [directionsMode, setDirectionsMode] = useState<DirectionsMode>('walk');
   const [isSkyview, setIsSkyview] = useState(false);
   const [isSelectingOrigin, setIsSelectingOrigin] = useState(false);
+  const [isResultPanelOpen, setIsResultPanelOpen] = useState(true);
   const [statusMessage, setStatusMessage] = useState('서울 중심의 화장실을 찾는 중입니다.');
   const searchSequence = useRef(0);
   const searchTimer = useRef<number | null>(null);
@@ -167,6 +157,18 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     openAllDay: toilet.openAllDay,
     accessible: toilet.accessible,
   })), [toilets]);
+
+  const focusedMapToilet = useMemo<MapToilet | null>(() => focusedToilet ? ({
+    id: `mock-${focusedToilet.id}`,
+    name: focusedToilet.name,
+    address: focusedToilet.address,
+    distance: focusedToilet.distance,
+    lat: focusedToilet.latitude,
+    lng: focusedToilet.longitude,
+    category: '추천 화장실',
+    openAllDay: focusedToilet.openAllDay,
+    accessible: focusedToilet.accessible,
+  }) : null, [focusedToilet]);
 
   const requestCurrentLocation = useCallback((
     onLocated?: (position: Position) => void,
@@ -276,7 +278,9 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     const foundToilets = Array.from(uniquePlaces.values());
     setNearbyToilets(foundToilets);
     setHasCompletedSearch(true);
-    setSelectedToiletId((current) => current && uniquePlaces.has(current) ? current : null);
+    setSelectedToiletId((current) =>
+      current && (uniquePlaces.has(current) || current === focusedMapToilet?.id) ? current : null,
+    );
 
     const failedSearchCount = results.filter((result) => result.status === 'rejected').length;
     if (foundToilets.length > 0) {
@@ -293,7 +297,7 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
         ? '화장실 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'
         : '현재 지도 영역에서 등록된 화장실을 찾지 못했습니다.',
     );
-  }, [map]);
+  }, [focusedMapToilet, map]);
 
   const scheduleMapSearch = useCallback(() => {
     if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
@@ -354,6 +358,16 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     return () => window.clearTimeout(timer);
   }, [map, query]);
 
+  useEffect(() => {
+    if (!map || !focusedMapToilet || directionsTargetRef.current) return;
+
+    setSelectedToiletId(focusedMapToilet.id);
+    setMapLevel(3);
+    setStatusMessage(`${focusedMapToilet.name} 위치를 표시하고 있습니다.`);
+    map.setLevel(3);
+    map.panTo(new kakao.maps.LatLng(focusedMapToilet.lat, focusedMapToilet.lng));
+  }, [focusedMapToilet, map]);
+
   if (loading) return <div className="map-feedback">카카오 지도를 불러오는 중입니다.</div>;
 
   if (error) {
@@ -366,9 +380,11 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
   }
 
   const availableToilets = hasCompletedSearch ? nearbyToilets : fallbackToilets;
-  const visibleToilets = availableToilets;
+  const visibleToilets = focusedMapToilet
+    ? [focusedMapToilet, ...availableToilets.filter((toilet) => toilet.id !== focusedMapToilet.id)]
+    : availableToilets;
   const displayedToilets = directionsTarget ? [directionsTarget] : visibleToilets;
-  const center = currentPosition ?? DEFAULT_POSITION;
+  const center = focusedMapToilet ?? currentPosition ?? DEFAULT_POSITION;
 
   const focusToilet = (toilet: MapToilet) => {
     setSelectedToiletId(toilet.id);
@@ -387,11 +403,10 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     map?.panTo(new kakao.maps.LatLng(DEFAULT_POSITION.lat, DEFAULT_POSITION.lng));
   };
 
-  const loadDirections = async (origin: Position, toilet: MapToilet, mode: DirectionsMode) => {
+  const loadDirections = async (origin: Position, toilet: MapToilet) => {
     const requestId = ++directionsSequence.current;
     setRouteInfo(null);
-    const modeLabel = DIRECTIONS_MODES.find((item) => item.mode === mode)?.label ?? '선택한 수단';
-    setRouteMessage(`${modeLabel} 경로를 계산하는 중입니다.`);
+    setRouteMessage('도보 경로를 계산하는 중입니다.');
 
     const fitRoute = (path: DirectionsRoute['path']) => {
       if (!map || path.length === 0) return;
@@ -404,7 +419,7 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
       const route = await getDirections({
         origin: { latitude: origin.lat, longitude: origin.lng },
         destination: { latitude: toilet.lat, longitude: toilet.lng, name: toilet.name },
-        mode,
+        mode: 'walk',
       });
       if (requestId !== directionsSequence.current) return;
       setRouteInfo(route);
@@ -418,7 +433,7 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
       setRouteMessage(
         snapDistance >= 50
           ? `출발점이 약 ${Math.round(snapDistance)}m 떨어진 도로에 연결됐습니다. 실제 출입구가 다르면 출발 위치를 조정해 주세요.${accuracyNotice}`
-          : `${modeLabel} 추천 최적 경로를 표시하고 있습니다.${accuracyNotice}`,
+          : `도보 추천 최적 경로를 표시하고 있습니다.${accuracyNotice}`,
       );
       fitRoute(route.path);
     } catch (error) {
@@ -427,12 +442,13 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
       setRouteMessage(
         error instanceof Error
           ? error.message
-          : `${modeLabel} 경로를 불러오지 못했습니다.`,
+          : '도보 경로를 불러오지 못했습니다.',
       );
     }
   };
 
   const startDirections = (toilet: MapToilet) => {
+    setIsResultPanelOpen(true);
     searchSequence.current += 1;
     directionsTargetRef.current = toilet;
     setDirectionsTarget(toilet);
@@ -441,16 +457,10 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     setRouteMessage('현재 위치를 확인하는 중입니다.');
     map?.panTo(new kakao.maps.LatLng(toilet.lat, toilet.lng));
 
-    const loadRecommendedDirections = (origin: Position) => {
-      const recommendedMode = getRecommendedDirectionsMode(origin, toilet);
-      setDirectionsMode(recommendedMode);
-      void loadDirections(origin, toilet, recommendedMode);
-    };
-
     requestCurrentLocation(
       (origin) => {
         if (directionsTargetRef.current?.id !== toilet.id) return;
-        loadRecommendedDirections(origin);
+        void loadDirections(origin, toilet);
       },
       (message) => {
         if (directionsTargetRef.current?.id === toilet.id) {
@@ -459,19 +469,6 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
         }
       },
     );
-  };
-
-  const changeDirectionsMode = (mode: DirectionsMode) => {
-    setDirectionsMode(mode);
-    if (isSelectingOrigin) {
-      setRouteMessage('이동수단을 변경했습니다. 지도에서 실제 출발 위치를 선택해 주세요.');
-      return;
-    }
-    if (currentPosition && directionsTarget) {
-      void loadDirections(currentPosition, directionsTarget, mode);
-      return;
-    }
-    setRouteMessage('현재 위치 권한을 허용해야 실제 경로를 검색할 수 있습니다.');
   };
 
   const stopDirections = () => {
@@ -512,7 +509,7 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     };
     setCurrentPosition(selectedOrigin);
     setIsSelectingOrigin(false);
-    void loadDirections(selectedOrigin, directionsTarget, directionsMode);
+    void loadDirections(selectedOrigin, directionsTarget);
   };
 
   return (
@@ -523,20 +520,7 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
             <>
               <span className="map-directions-label">길찾기 중 · {directionsTarget.name}</span>
               <div className="directions-mode-row">
-                <div className="directions-mode-tabs" role="group" aria-label="이동수단 선택">
-                  {DIRECTIONS_MODES.map((item) => (
-                    <button
-                      className={directionsMode === item.mode ? 'is-active' : ''}
-                      key={item.mode}
-                      type="button"
-                      onClick={() => changeDirectionsMode(item.mode)}
-                      aria-pressed={directionsMode === item.mode}
-                    >
-                      <span aria-hidden="true">{item.icon}</span>
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
+                <span className="directions-walk-label"><span aria-hidden="true">🚶</span>도보 길찾기</span>
                 {routeInfo && (
                   <div className="map-route-metrics">
                     <strong className="map-route-duration" aria-label={`예상 소요 시간 ${formatDuration(routeInfo.durationSeconds)}`}>
@@ -579,6 +563,14 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
               <button type="button" onClick={toggleSkyview}>{isSkyview ? '일반지도' : '위성뷰'}</button>
             </>
           )}
+          <button
+            type="button"
+            aria-controls="map-result-panel"
+            aria-expanded={isResultPanelOpen}
+            onClick={() => setIsResultPanelOpen((current) => !current)}
+          >
+            {isResultPanelOpen ? '목록 닫기' : '목록 열기'}
+          </button>
         </div>
       </div>
       <section className={`kakao-map-wrap${isSelectingOrigin ? ' is-selecting-origin' : ''}`} aria-label="현재 지도 영역의 화장실 지도">
@@ -641,7 +633,8 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
             </MarkerClusterer>
           </KakaoMap>
 
-          <aside className="map-result-panel" aria-label="화장실 위치 목록">
+          {isResultPanelOpen && (
+            <aside id="map-result-panel" className="map-result-panel" aria-label="화장실 위치 목록">
             <div className="map-result-heading">
               <strong>{directionsTarget ? '길찾기 목적지' : '화장실 위치'}</strong>
               <span>{displayedToilets.length}곳</span>
@@ -699,7 +692,8 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
                 </>
               )}
             </div>
-          </aside>
+            </aside>
+          )}
         </div>
       </section>
     </>

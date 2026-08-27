@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import ToiletCard from '../components/ToiletCard';
+import ToiletLocationMap from '../components/ToiletLocationMap';
 import { getNearbyToilets } from '../services/toiletService';
+import { formatDistance, getDistanceMeters, type Coordinates } from '../services/locationService';
 import type { Toilet } from '../types/toilet';
 
 type ServiceProps = {
   onBack: () => void;
+  onShowOnMap: (toilet: Toilet) => void;
   onLogout: () => void;
 };
 
@@ -23,7 +26,7 @@ type ToiletForm = {
   agreed: boolean;
 };
 
-type ModalName = 'request' | 'add' | 'logout' | null;
+type ModalName = 'request' | 'add' | 'logout' | 'location' | null;
 
 const SUBMITTED_KEY = 'geuphaeyo-submitted-toilets';
 const REQUEST_KEY = 'geuphaeyo-service-requests';
@@ -54,7 +57,7 @@ function loadSubmitted(): Toilet[] {
   }
 }
 
-export default function Service({ onBack, onLogout }: ServiceProps) {
+export default function Service({ onBack, onShowOnMap, onLogout }: ServiceProps) {
   const [query, setQuery] = useState('');
   const [toilets, setToilets] = useState<Toilet[]>([]);
   const [modal, setModal] = useState<ModalName>(null);
@@ -64,11 +67,45 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
   const [requestMessage, setRequestMessage] = useState('');
   const [requestRecipient, setRequestRecipient] = useState<'hayul9888@gmail.com' | 'sg8111320@gmail.com'>('hayul9888@gmail.com');
   const [requestState, setRequestState] = useState('');
+  const [selectedToilet, setSelectedToilet] = useState<Toilet | null>(null);
+  const [currentPosition, setCurrentPosition] = useState<Coordinates | null>(null);
+  const [locationState, setLocationState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [locationMessage, setLocationMessage] = useState('현재 위치를 확인하는 중입니다.');
+
+  const requestCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationState('error');
+      setLocationMessage('이 브라우저에서는 현재 위치를 사용할 수 없습니다.');
+      return;
+    }
+
+    setLocationState('loading');
+    setLocationMessage('현재 위치를 확인하는 중입니다.');
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setCurrentPosition({ latitude: coords.latitude, longitude: coords.longitude });
+        setLocationState('ready');
+        setLocationMessage(`현재 위치 기준 직선거리 · 정확도 약 ${Math.round(coords.accuracy)}m`);
+      },
+      (error) => {
+        setCurrentPosition(null);
+        setLocationState('error');
+        setLocationMessage(error.code === error.PERMISSION_DENIED
+          ? '위치 권한을 허용하면 실제 거리를 확인할 수 있습니다.'
+          : '현재 위치를 확인하지 못했습니다.');
+      },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
+    );
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = 'light';
     void getNearbyToilets().then((items) => setToilets([...loadSubmitted(), ...items]));
   }, []);
+
+  useEffect(() => {
+    requestCurrentLocation();
+  }, [requestCurrentLocation]);
 
   useEffect(() => {
     if (!modal) return;
@@ -82,10 +119,26 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
     return toilets.filter((toilet) => normalize(toilet.name + ' ' + toilet.address).includes(keyword));
   }, [query, toilets]);
 
+  const locatedToilets = useMemo(() => filtered.map((toilet) => ({
+    ...toilet,
+    distance: currentPosition
+      ? formatDistance(getDistanceMeters(currentPosition, {
+          latitude: toilet.latitude,
+          longitude: toilet.longitude,
+        }))
+      : locationState === 'loading' ? '거리 확인 중' : '거리 확인 불가',
+  })), [currentPosition, filtered, locationState]);
+
   const closeModal = () => {
     setModal(null);
+    setSelectedToilet(null);
     setFormError('');
     setRequestState('');
+  };
+
+  const openLocation = (toilet: Toilet) => {
+    setSelectedToilet(toilet);
+    setModal('location');
   };
 
   const addToilet = (event: FormEvent<HTMLFormElement>) => {
@@ -189,11 +242,42 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
         </section>
 
         <section className="service-toilet-section">
-          <div className="service-section-title"><h2>화장실 추천</h2><span>{Math.min(filtered.length, 16)}곳</span></div>
-          <div className="service-toilet-list">{filtered.slice(0, 16).map((toilet) => <ToiletCard key={toilet.id} toilet={toilet} />)}</div>
+          <div className="service-section-title">
+            <div><h2>화장실 추천</h2><span>{Math.min(locatedToilets.length, 16)}곳</span></div>
+            <div className="service-distance-status">
+              <span>{locationMessage}</span>
+              <button type="button" onClick={requestCurrentLocation}>현재 위치 다시 확인</button>
+            </div>
+          </div>
+          <div className="service-toilet-list">{locatedToilets.slice(0, 16).map((toilet) => <ToiletCard key={toilet.id} toilet={toilet} onSelect={openLocation} />)}</div>
           {filtered.length === 0 && <p className="service-empty-result">검색 결과가 없습니다.</p>}
         </section>
       </main>
+
+      {modal === 'location' && selectedToilet && (
+        <div className="service-modal-backdrop" onMouseDown={closeModal}>
+          <section className="service-modal service-location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="service-modal-header">
+              <div><p>추천 화장실 위치</p><h2 id="location-title">{selectedToilet.name}</h2></div>
+              <button type="button" onClick={closeModal} aria-label="닫기">×</button>
+            </div>
+            <p className="service-location-address">{selectedToilet.address}{selectedToilet.locationDetail ? ` · ${selectedToilet.locationDetail}` : ''}</p>
+            <ToiletLocationMap toilet={selectedToilet} />
+            <div className="service-location-meta">
+              <span>현재 위치 기준 {selectedToilet.distance}</span>
+              <span>{selectedToilet.openAllDay ? '24시간 운영' : selectedToilet.hours || '운영시간 확인 필요'}</span>
+              {selectedToilet.accessible && <span>♿ 접근 가능</span>}
+            </div>
+            <button
+              className="service-map-link"
+              type="button"
+              onClick={() => onShowOnMap(selectedToilet)}
+            >
+              지도에서 크게 보기
+            </button>
+          </section>
+        </div>
+      )}
 
       {modal === 'add' && (
         <div className="service-modal-backdrop" onMouseDown={closeModal}>

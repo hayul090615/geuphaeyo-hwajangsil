@@ -172,6 +172,20 @@
   margin: 7px 0 3px;
 }
 
+.directions-walk-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 1px solid #ffb5ae;
+  border-radius: 8px;
+  background: #fff0ed;
+  color: #d94b3b;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .directions-mode-tabs {
   display: flex;
   gap: 5px;
@@ -461,6 +475,12 @@
 }
 
 [data-theme='dark'] .map-route-duration {
+  background: #3b2927;
+  color: #ff9187;
+}
+
+[data-theme='dark'] .directions-walk-label {
+  border-color: #ff7567;
   background: #3b2927;
   color: #ff9187;
 }
@@ -941,5 +961,51 @@
   .map-home .directions-mode-row {
     width: 100%;
     overflow-x: auto;
+  }
+}
+
+/* 길찾기 정보는 화장실명부터 경로 안내까지 한 줄로 표시 */
+.map-home .map-status.has-directions > div:first-child {
+  display: flex;
+  width: auto;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.map-home .map-status.has-directions .map-directions-label,
+.map-home .map-status.has-directions .directions-mode-row,
+.map-home .map-status.has-directions .map-route-summary {
+  width: auto;
+  flex: none;
+  margin: 0;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.map-home .map-status.has-directions > div:first-child > small {
+  display: block;
+  min-width: 140px;
+  overflow: hidden;
+  flex: 1 1 auto;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .map-home .map-status.has-directions > div:first-child {
+    display: flex;
+    width: 100%;
+    gap: 7px;
+    overflow-x: auto;
+  }
+
+  .map-home .map-status.has-directions > div:first-child > small {
+    min-width: max-content;
+    flex: none;
+    white-space: nowrap;
   }
 }

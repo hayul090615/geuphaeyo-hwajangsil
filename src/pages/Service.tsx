@@ -62,6 +62,7 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
   const [formError, setFormError] = useState('');
   const [requestCategory, setRequestCategory] = useState<'feature' | 'data' | 'bug' | 'other'>('feature');
   const [requestMessage, setRequestMessage] = useState('');
+  const [requestRecipient, setRequestRecipient] = useState<'hayul9888@gmail.com' | 'sg8111320@gmail.com'>('hayul9888@gmail.com');
   const [requestState, setRequestState] = useState('');
 
   useEffect(() => {
@@ -139,11 +140,17 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
     try {
       const saved = JSON.parse(localStorage.getItem(REQUEST_KEY) || '[]') as unknown[];
       localStorage.setItem(REQUEST_KEY, JSON.stringify([
-        { id: crypto.randomUUID(), category: requestCategory, message: requestMessage.trim(), createdAt: new Date().toISOString() },
+        {
+          id: crypto.randomUUID(),
+          category: requestCategory,
+          message: requestMessage.trim(),
+          recipientEmail: requestRecipient,
+          createdAt: new Date().toISOString(),
+        },
         ...saved,
       ]));
       setRequestMessage('');
-      setRequestState('요청사항이 임시 저장되었습니다.');
+      setRequestState(`${requestRecipient} 담당자에게 보낼 요청이 임시 저장되었습니다.`);
     } catch {
       setRequestState('요청사항을 저장하지 못했습니다.');
     }
@@ -246,8 +253,14 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
             <form className="service-form" onSubmit={saveRequest}>
               <label>요청 유형<select value={requestCategory} onChange={(event) => setRequestCategory(event.target.value as typeof requestCategory)}><option value="feature">기능 제안</option><option value="data">화장실 정보 수정</option><option value="bug">오류 신고</option><option value="other">기타</option></select></label>
               <label>요청 내용 *<textarea required minLength={10} maxLength={1000} value={requestMessage} onChange={(event) => { setRequestMessage(event.target.value); setRequestState(''); }} /></label>
+              <label>받는 사람 *
+                <select required value={requestRecipient} onChange={(event) => setRequestRecipient(event.target.value as typeof requestRecipient)}>
+                  <option value="hayul9888@gmail.com">hayul9888@gmail.com</option>
+                  <option value="sg8111320@gmail.com">sg8111320@gmail.com</option>
+                </select>
+              </label>
               {requestState && <p className="service-form-status" role="status">{requestState}</p>}
-              <div className="service-form-actions"><button type="button" onClick={closeModal}>닫기</button><button className="service-submit-button" type="submit">저장하기</button></div>
+              <div className="service-form-actions"><button type="button" onClick={closeModal}>닫기</button><button className="service-submit-button" type="submit">보내기</button></div>
             </form>
           </section>
         </div>

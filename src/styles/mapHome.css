@@ -160,6 +160,21 @@
   text-align: center;
 }
 
+.map-result-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.map-result-heading a {
+  color: #8a96a3;
+  font-size: 9px;
+  text-decoration: none;
+}
+
+.map-result-heading a:hover {
+  text-decoration: underline;
+}
+
 .map-directions-label {
   color: #d94b3b;
   font-weight: 800;

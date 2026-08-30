@@ -12,11 +12,8 @@
 - 브라우저 GPS를 이용한 현재 위치 표시
 - 현재 지도 영역 재검색 및 지역명 검색
 - 화장실 목록·마커·상세 팝업 연동
-- 현재 위치 기준 추천 화장실 직선거리 계산
 - 선택한 화장실까지 도보 경로, 거리, 예상 시간 표시
 - 지도에서 실제 출발 위치 직접 조정
-- 고객센터 추천 화장실 16곳과 위치 팝업
-- 추천 화장실에서 내부 메인 지도로 이동
 - 로그인·회원가입·Google 로그인 UI
 - 화장실 제보 및 서비스 요청사항 입력
 - 반응형 UI, 다크 모드, 일반지도·위성뷰 지원
@@ -46,8 +43,7 @@
    ├─ Auth
    │  └─ authService → 현재 localStorage 기반 세션
    └─ Service
-      ├─ toiletService → 현재 mock 추천 데이터
-      ├─ locationService → 현재 위치 기준 거리 계산
+      ├─ toiletService → 화장실 중복 확인용 임시 데이터
       └─ 화장실 제보·요청사항 → 현재 localStorage 임시 저장
 
 /api/directions (Vercel Function)
@@ -233,9 +229,8 @@ npm --prefix backend run db:setup
 ### 완료
 
 - 메인 지도, 검색, 마커, 목록과 상세정보
-- 현재 위치 및 추천 화장실 거리 계산
+- 현재 위치 및 지도 검색 결과 거리 표시
 - 도보 전용 길찾기와 경로 시각화
-- 고객센터 추천 16곳과 내부 지도 이동
 - 로그인·회원가입·Google 로그인 화면
 - 화장실 제보와 요청사항 UI
 - 모바일 반응형 UI와 다크 모드
@@ -244,7 +239,7 @@ npm --prefix backend run db:setup
 
 ### 임시 구현
 
-- 추천 화장실 목록: `toiletService`의 mock 데이터
+- 화장실 중복 확인 데이터: `toiletService`의 mock 데이터
 - 일반 로그인과 세션: 브라우저 `localStorage`
 - 화장실 제보와 요청사항: 브라우저 `localStorage`
 
@@ -255,7 +250,7 @@ npm --prefix backend run db:setup
 ### 3주차 — 프론트엔드·백엔드 통합
 
 1. 프론트엔드 `camelCase`와 DB `snake_case` 변환 규칙 확정
-2. `GET /toilets`를 연결해 mock 추천 데이터를 실제 데이터로 교체
+2. `GET /toilets`를 연결해 mock 화장실 데이터를 실제 데이터로 교체
 3. 화장실 상세조회와 신규 제보 `POST /toilets` 연결
 4. 로그인·Google ID 토큰을 백엔드에서 검증하는 인증 구조 협의
 5. 요청사항 저장 API의 요청·응답 형식 설계

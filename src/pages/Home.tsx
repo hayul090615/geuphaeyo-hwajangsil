@@ -7,10 +7,9 @@ import type { Toilet } from '../types/toilet';
 
 type HomeProps = {
   onServiceOpen: () => void;
-  mapTarget?: Toilet | null;
 };
 
-export default function Home({ onServiceOpen, mapTarget }: HomeProps) {
+export default function Home({ onServiceOpen }: HomeProps) {
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [toilets, setToilets] = useState<Toilet[]>([]);
@@ -39,7 +38,7 @@ export default function Home({ onServiceOpen, mapTarget }: HomeProps) {
         <section className="map-home-toolbar" aria-label="화장실 검색">
           <SearchBar value={query} onChange={setQuery} onSubmit={setSubmittedQuery} />
         </section>
-        <Map toilets={toilets} query={submittedQuery} focusedToilet={mapTarget} />
+        <Map toilets={toilets} query={submittedQuery} />
 
       </main>
     </div>

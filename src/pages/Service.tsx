@@ -1,13 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import ToiletCard from '../components/ToiletCard';
-import ToiletLocationMap from '../components/ToiletLocationMap';
+import { useEffect, useState, type FormEvent } from 'react';
+import ServiceFooter from '../components/ServiceFooter';
 import { getNearbyToilets } from '../services/toiletService';
-import { formatDistance, getDistanceMeters, type Coordinates } from '../services/locationService';
 import type { Toilet } from '../types/toilet';
 
 type ServiceProps = {
   onBack: () => void;
-  onShowOnMap: (toilet: Toilet) => void;
   onLogout: () => void;
 };
 
@@ -26,10 +23,11 @@ type ToiletForm = {
   agreed: boolean;
 };
 
-type ModalName = 'request' | 'add' | 'logout' | 'location' | null;
+type ModalName = 'request' | 'add' | 'feedback' | 'logout' | null;
 
 const SUBMITTED_KEY = 'geuphaeyo-submitted-toilets';
 const REQUEST_KEY = 'geuphaeyo-service-requests';
+const FEEDBACK_KEY = 'geuphaeyo-feedback-reports';
 const initialForm = (): ToiletForm => ({
   name: '',
   address: '',
@@ -57,55 +55,25 @@ function loadSubmitted(): Toilet[] {
   }
 }
 
-export default function Service({ onBack, onShowOnMap, onLogout }: ServiceProps) {
-  const [query, setQuery] = useState('');
+export default function Service({ onBack, onLogout }: ServiceProps) {
   const [toilets, setToilets] = useState<Toilet[]>([]);
   const [modal, setModal] = useState<ModalName>(null);
   const [form, setForm] = useState<ToiletForm>(initialForm);
   const [formError, setFormError] = useState('');
-  const [requestCategory, setRequestCategory] = useState<'feature' | 'data' | 'bug' | 'other'>('feature');
+  const [requestCategory, setRequestCategory] = useState<'data' | 'other'>('data');
   const [requestMessage, setRequestMessage] = useState('');
   const [requestRecipient, setRequestRecipient] = useState<'hayul9888@gmail.com' | 'sg8111320@gmail.com'>('hayul9888@gmail.com');
   const [requestState, setRequestState] = useState('');
-  const [selectedToilet, setSelectedToilet] = useState<Toilet | null>(null);
-  const [currentPosition, setCurrentPosition] = useState<Coordinates | null>(null);
-  const [locationState, setLocationState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [locationMessage, setLocationMessage] = useState('현재 위치를 확인하는 중입니다.');
-
-  const requestCurrentLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setLocationState('error');
-      setLocationMessage('이 브라우저에서는 현재 위치를 사용할 수 없습니다.');
-      return;
-    }
-
-    setLocationState('loading');
-    setLocationMessage('현재 위치를 확인하는 중입니다.');
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setCurrentPosition({ latitude: coords.latitude, longitude: coords.longitude });
-        setLocationState('ready');
-        setLocationMessage(`현재 위치 기준 직선거리 · 정확도 약 ${Math.round(coords.accuracy)}m`);
-      },
-      (error) => {
-        setCurrentPosition(null);
-        setLocationState('error');
-        setLocationMessage(error.code === error.PERMISSION_DENIED
-          ? '위치 권한을 허용하면 실제 거리를 확인할 수 있습니다.'
-          : '현재 위치를 확인하지 못했습니다.');
-      },
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
-    );
-  }, []);
-
+  const [feedbackType, setFeedbackType] = useState<'bug' | 'suggestion'>('bug');
+  const [feedbackArea, setFeedbackArea] = useState<'map' | 'service' | 'auth' | 'other'>('map');
+  const [feedbackRecipient, setFeedbackRecipient] = useState<'hayul9888@gmail.com' | 'sg8111320@gmail.com'>('hayul9888@gmail.com');
+  const [feedbackTitle, setFeedbackTitle] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackState, setFeedbackState] = useState('');
   useEffect(() => {
     document.documentElement.dataset.theme = 'light';
     void getNearbyToilets().then((items) => setToilets([...loadSubmitted(), ...items]));
   }, []);
-
-  useEffect(() => {
-    requestCurrentLocation();
-  }, [requestCurrentLocation]);
 
   useEffect(() => {
     if (!modal) return;
@@ -114,31 +82,11 @@ export default function Service({ onBack, onShowOnMap, onLogout }: ServiceProps)
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [modal]);
 
-  const filtered = useMemo(() => {
-    const keyword = normalize(query);
-    return toilets.filter((toilet) => normalize(toilet.name + ' ' + toilet.address).includes(keyword));
-  }, [query, toilets]);
-
-  const locatedToilets = useMemo(() => filtered.map((toilet) => ({
-    ...toilet,
-    distance: currentPosition
-      ? formatDistance(getDistanceMeters(currentPosition, {
-          latitude: toilet.latitude,
-          longitude: toilet.longitude,
-        }))
-      : locationState === 'loading' ? '거리 확인 중' : '거리 확인 불가',
-  })), [currentPosition, filtered, locationState]);
-
   const closeModal = () => {
     setModal(null);
-    setSelectedToilet(null);
     setFormError('');
     setRequestState('');
-  };
-
-  const openLocation = (toilet: Toilet) => {
-    setSelectedToilet(toilet);
-    setModal('location');
+    setFeedbackState('');
   };
 
   const addToilet = (event: FormEvent<HTMLFormElement>) => {
@@ -209,14 +157,60 @@ export default function Service({ onBack, onShowOnMap, onLogout }: ServiceProps)
     }
   };
 
+  const saveFeedback = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (feedbackTitle.trim().length < 3 || feedbackMessage.trim().length < 10) {
+      setFeedbackState('제목은 3자 이상, 상세 내용은 10자 이상 입력해 주세요.');
+      return;
+    }
+
+    const title = feedbackTitle.trim();
+    const message = feedbackMessage.trim();
+    const typeLabel = feedbackType === 'bug' ? '버그 신고' : '기능 건의';
+    const areaLabels = {
+      map: '지도·길찾기',
+      service: '고객센터',
+      auth: '로그인·회원가입',
+      other: '기타',
+    } as const;
+
+    try {
+      const saved = JSON.parse(localStorage.getItem(FEEDBACK_KEY) || '[]') as unknown[];
+      localStorage.setItem(FEEDBACK_KEY, JSON.stringify([
+        {
+          id: crypto.randomUUID(),
+          type: feedbackType,
+          area: feedbackArea,
+          recipientEmail: feedbackRecipient,
+          title,
+          message,
+          createdAt: new Date().toISOString(),
+        },
+        ...saved,
+      ]));
+
+      const subject = `[급해요 화장실][${typeLabel}] ${title}`;
+      const body = [
+        `접수 유형: ${typeLabel}`,
+        `관련 화면: ${areaLabels[feedbackArea]}`,
+        '',
+        message,
+      ].join('\n');
+      setFeedbackTitle('');
+      setFeedbackMessage('');
+      setFeedbackState('메일 작성창을 열었습니다. 내용을 확인한 뒤 전송해 주세요.');
+      window.location.href = `mailto:${feedbackRecipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    } catch {
+      setFeedbackState('내용을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    }
+  };
+
   return (
     <div className="service-page">
       <header className="service-page-header">
         <button className="service-brand" type="button" onClick={onBack}>급해요<span>화장실</span></button>
         <nav className="service-page-actions" aria-label="고객센터 메뉴">
           <button className="service-back-button" type="button" onClick={onBack}>← 지도로 돌아가기</button>
-          <button type="button" onClick={() => setModal('request')}>요청사항</button>
-          <button className="service-primary-button" type="button" onClick={() => setModal('add')}>화장실 추가</button>
           <button className="service-logout-button" type="button" onClick={() => setModal('logout')}>로그아웃</button>
         </nav>
       </header>
@@ -226,58 +220,63 @@ export default function Service({ onBack, onShowOnMap, onLogout }: ServiceProps)
           <p>고객센터</p>
           <h1>더 나은 화장실 정보를<br /><strong>함께 만들어 주세요.</strong></h1>
           <span>새로운 장소를 제보하거나 서비스에 필요한 의견을 남길 수 있어요.</span>
-          <label className="service-search">
-            <span aria-hidden="true">⌕</span>
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="등록된 화장실을 검색해보세요" />
-          </label>
         </section>
 
         <section className="service-guide" aria-labelledby="service-guide-title">
           <div><p>이용 방법</p><h2 id="service-guide-title">정확한 정보를 빠르게 제보하세요.</h2></div>
           <ol>
-            <li><strong>정보 검색</strong><span>먼저 같은 장소가 등록되어 있는지 확인하세요.</span></li>
+            <li><strong>장소 확인</strong><span>지도에서 같은 장소가 등록되어 있는지 먼저 확인하세요.</span></li>
             <li><strong>장소 제보</strong><span>주소와 운영시간 등 확인한 정보를 입력하세요.</span></li>
             <li><strong>의견 남기기</strong><span>오류나 필요한 기능은 요청사항으로 알려주세요.</span></li>
           </ol>
         </section>
 
-        <section className="service-toilet-section">
-          <div className="service-section-title">
-            <div><h2>화장실 추천</h2><span>{Math.min(locatedToilets.length, 16)}곳</span></div>
-            <div className="service-distance-status">
-              <span>{locationMessage}</span>
-              <button type="button" onClick={requestCurrentLocation}>현재 위치 다시 확인</button>
-            </div>
+        <section className="service-help-section" aria-labelledby="service-help-title">
+          <div className="service-help-heading">
+            <p>서비스 이용 안내</p>
+            <h2 id="service-help-title">필요한 도움을 바로 선택하세요.</h2>
+            <span>새로운 화장실을 제보하거나 잘못된 정보를 수정하고, 서비스에 필요한 의견을 보낼 수 있습니다.</span>
           </div>
-          <div className="service-toilet-list">{locatedToilets.slice(0, 16).map((toilet) => <ToiletCard key={toilet.id} toilet={toilet} onSelect={openLocation} />)}</div>
-          {filtered.length === 0 && <p className="service-empty-result">검색 결과가 없습니다.</p>}
+
+          <div className="service-help-grid">
+            <article>
+              <span className="service-help-number">01</span>
+              <div><h3>새로운 화장실 제보</h3><p>지도에 없는 화장실의 위치와 운영 정보를 알려주세요.</p></div>
+              <button type="button" onClick={() => setModal('add')}>화장실 제보하기 <span aria-hidden="true">→</span></button>
+            </article>
+            <article>
+              <span className="service-help-number">02</span>
+              <div><h3>버그·기능 건의</h3><p>오류가 발생한 화면이나 새롭게 필요한 기능을 자세히 알려주세요.</p></div>
+              <button type="button" onClick={() => setModal('feedback')}>버그·건의 접수하기 <span aria-hidden="true">→</span></button>
+            </article>
+            <article>
+              <span className="service-help-number">03</span>
+              <div><h3>화장실 정보 수정</h3><p>위치, 운영시간 또는 편의시설 정보가 다르다면 알려주세요.</p></div>
+              <button
+                type="button"
+                onClick={() => {
+                  setRequestCategory('data');
+                  setModal('request');
+                }}
+              >
+                수정 요청하기 <span aria-hidden="true">→</span>
+              </button>
+            </article>
+          </div>
+
+          <div className="service-help-notice">
+            <strong>제보 전 확인해 주세요</strong>
+            <span>정확한 주소와 운영시간을 입력하면 더 신뢰할 수 있는 화장실 정보를 만드는 데 도움이 됩니다.</span>
+          </div>
         </section>
+
       </main>
 
-      {modal === 'location' && selectedToilet && (
-        <div className="service-modal-backdrop" onMouseDown={closeModal}>
-          <section className="service-modal service-location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="service-modal-header">
-              <div><p>추천 화장실 위치</p><h2 id="location-title">{selectedToilet.name}</h2></div>
-              <button type="button" onClick={closeModal} aria-label="닫기">×</button>
-            </div>
-            <p className="service-location-address">{selectedToilet.address}{selectedToilet.locationDetail ? ` · ${selectedToilet.locationDetail}` : ''}</p>
-            <ToiletLocationMap toilet={selectedToilet} />
-            <div className="service-location-meta">
-              <span>현재 위치 기준 {selectedToilet.distance}</span>
-              <span>{selectedToilet.openAllDay ? '24시간 운영' : selectedToilet.hours || '운영시간 확인 필요'}</span>
-              {selectedToilet.accessible && <span>♿ 접근 가능</span>}
-            </div>
-            <button
-              className="service-map-link"
-              type="button"
-              onClick={() => onShowOnMap(selectedToilet)}
-            >
-              지도에서 크게 보기
-            </button>
-          </section>
-        </div>
-      )}
+      <ServiceFooter
+        onMapOpen={onBack}
+        onRequestOpen={() => setModal('request')}
+        onToiletAdd={() => setModal('add')}
+      />
 
       {modal === 'add' && (
         <div className="service-modal-backdrop" onMouseDown={closeModal}>
@@ -332,10 +331,10 @@ export default function Service({ onBack, onShowOnMap, onLogout }: ServiceProps)
       {modal === 'request' && (
         <div className="service-modal-backdrop" onMouseDown={closeModal}>
           <section className="service-modal" role="dialog" aria-modal="true" aria-labelledby="request-title" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="service-modal-header"><div><p>서비스 의견 보내기</p><h2 id="request-title">요청사항</h2></div><button type="button" onClick={closeModal} aria-label="닫기">×</button></div>
-            <p className="service-modal-description">불편한 점이나 필요한 기능을 남겨주세요.</p>
+            <div className="service-modal-header"><div><p>화장실 정보 바로잡기</p><h2 id="request-title">정보 수정 요청</h2></div><button type="button" onClick={closeModal} aria-label="닫기">×</button></div>
+            <p className="service-modal-description">위치, 운영시간, 편의시설 등 실제 정보와 다른 내용을 알려주세요.</p>
             <form className="service-form" onSubmit={saveRequest}>
-              <label>요청 유형<select value={requestCategory} onChange={(event) => setRequestCategory(event.target.value as typeof requestCategory)}><option value="feature">기능 제안</option><option value="data">화장실 정보 수정</option><option value="bug">오류 신고</option><option value="other">기타</option></select></label>
+              <label>요청 유형<select value={requestCategory} onChange={(event) => setRequestCategory(event.target.value as typeof requestCategory)}><option value="data">화장실 정보 수정</option><option value="other">기타 정보 요청</option></select></label>
               <label>요청 내용 *<textarea required minLength={10} maxLength={1000} value={requestMessage} onChange={(event) => { setRequestMessage(event.target.value); setRequestState(''); }} /></label>
               <label>받는 사람 *
                 <select required value={requestRecipient} onChange={(event) => setRequestRecipient(event.target.value as typeof requestRecipient)}>
@@ -345,6 +344,74 @@ export default function Service({ onBack, onShowOnMap, onLogout }: ServiceProps)
               </label>
               {requestState && <p className="service-form-status" role="status">{requestState}</p>}
               <div className="service-form-actions"><button type="button" onClick={closeModal}>닫기</button><button className="service-submit-button" type="submit">보내기</button></div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {modal === 'feedback' && (
+        <div className="service-modal-backdrop" onMouseDown={closeModal}>
+          <section className="service-modal service-feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="service-modal-header">
+              <div><p>서비스 개선 접수</p><h2 id="feedback-title">버그·기능 건의</h2></div>
+              <button type="button" onClick={closeModal} aria-label="닫기">×</button>
+            </div>
+            <p className="service-modal-description">접수 정보를 선택하고 내용을 작성하면 선택한 담당자의 메일 작성창으로 연결됩니다.</p>
+            <form className="service-form" onSubmit={saveFeedback}>
+              <div className="service-form-grid">
+                <label>접수 유형 *
+                  <select value={feedbackType} onChange={(event) => setFeedbackType(event.target.value as typeof feedbackType)}>
+                    <option value="bug">버그 신고</option>
+                    <option value="suggestion">기능 건의</option>
+                  </select>
+                </label>
+                <label>관련 화면 *
+                  <select value={feedbackArea} onChange={(event) => setFeedbackArea(event.target.value as typeof feedbackArea)}>
+                    <option value="map">지도·길찾기</option>
+                    <option value="service">고객센터</option>
+                    <option value="auth">로그인·회원가입</option>
+                    <option value="other">기타</option>
+                  </select>
+                </label>
+                <label className="service-full-field">받는 담당자 *
+                  <select value={feedbackRecipient} onChange={(event) => setFeedbackRecipient(event.target.value as typeof feedbackRecipient)}>
+                    <option value="hayul9888@gmail.com">서비스 담당자 · hayul9888@gmail.com</option>
+                    <option value="sg8111320@gmail.com">개발 담당자 · sg8111320@gmail.com</option>
+                  </select>
+                </label>
+                <label className="service-full-field">제목 *
+                  <input
+                    autoFocus
+                    required
+                    minLength={3}
+                    maxLength={80}
+                    value={feedbackTitle}
+                    onChange={(event) => {
+                      setFeedbackTitle(event.target.value);
+                      setFeedbackState('');
+                    }}
+                    placeholder="문제 또는 건의 내용을 간단히 입력해 주세요"
+                  />
+                </label>
+                <label className="service-full-field">상세 내용 *
+                  <textarea
+                    required
+                    minLength={10}
+                    maxLength={1000}
+                    value={feedbackMessage}
+                    onChange={(event) => {
+                      setFeedbackMessage(event.target.value);
+                      setFeedbackState('');
+                    }}
+                    placeholder="발생 과정, 기대한 결과, 실제 결과를 적어주세요"
+                  />
+                </label>
+              </div>
+              {feedbackState && <p className="service-form-status" role="status">{feedbackState}</p>}
+              <div className="service-form-actions">
+                <button type="button" onClick={closeModal}>닫기</button>
+                <button className="service-submit-button" type="submit">이메일로 보내기</button>
+              </div>
             </form>
           </section>
         </div>

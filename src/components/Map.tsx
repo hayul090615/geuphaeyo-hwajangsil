@@ -21,10 +21,12 @@ const TOILET_SEARCH_KEYWORDS = [
   '공원 화장실',
   '주민센터 화장실',
 ];
-const SEARCH_PAGE_COUNT = 2;
-const WIDE_SEARCH_GRID_SIZE = 3;
-const NEARBY_SEARCH_GRID_SIZE = 2;
-const SEARCH_CONCURRENCY = 6;
+const SEARCH_PAGE_COUNT = 1;
+const WIDE_SEARCH_GRID_SIZE = 2;
+const NEARBY_SEARCH_GRID_SIZE = 1;
+const SEARCH_CONCURRENCY = 16;
+const SEARCH_REQUEST_TIMEOUT_MS = 2_200;
+const SEARCH_DEBOUNCE_MS = 200;
 const SEOUL_MAP_LEVEL = 8;
 const NEARBY_MAP_LEVEL = 5;
 const MAX_AUTO_LOCATION_ACCURACY_METERS = 150;
@@ -41,7 +43,7 @@ type MapToilet = Position & {
   accessible?: boolean;
 };
 type RouteInfo = DirectionsRoute;
-type MapProps = { toilets: Toilet[]; query?: string; focusedToilet?: Toilet | null };
+type MapProps = { toilets: Toilet[]; query?: string };
 
 function formatDistance(distance?: string) {
   if (!distance) return undefined;
@@ -110,7 +112,7 @@ function getDistanceMeters(origin: Position, destination: Position) {
   return 6_371_000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
-function Map({ toilets, query, focusedToilet }: MapProps) {
+function Map({ toilets, query }: MapProps) {
   if (!KAKAO_MAP_KEY) {
     return (
       <div className="map-feedback" role="alert">
@@ -120,16 +122,17 @@ function Map({ toilets, query, focusedToilet }: MapProps) {
     );
   }
 
-  return <LoadedMap appKey={KAKAO_MAP_KEY} toilets={toilets} query={query} focusedToilet={focusedToilet} />;
+  return <LoadedMap appKey={KAKAO_MAP_KEY} toilets={toilets} query={query} />;
 }
 
-function LoadedMap({ appKey, toilets, query = '', focusedToilet }: MapProps & { appKey: string }) {
+function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string }) {
   const [loading, error] = useKakaoLoader({
     appkey: appKey,
     libraries: ['services', 'clusterer'],
   });
   const [map, setMap] = useState<kakao.maps.Map | null>(null);
-  const [mapLevel, setMapLevel] = useState(focusedToilet ? 3 : SEOUL_MAP_LEVEL);
+  const [mapLevel, setMapLevel] = useState(SEOUL_MAP_LEVEL);
+  const [viewportRevision, setViewportRevision] = useState(0);
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [nearbyToilets, setNearbyToilets] = useState<MapToilet[]>([]);
   const [hasCompletedSearch, setHasCompletedSearch] = useState(false);
@@ -150,25 +153,15 @@ function LoadedMap({ appKey, toilets, query = '', focusedToilet }: MapProps & { 
     id: `mock-${toilet.id}`,
     name: toilet.name,
     address: toilet.address,
-    distance: toilet.distance,
+    distance: currentPosition
+      ? formatDistance(String(getDistanceMeters(currentPosition, { lat: toilet.latitude, lng: toilet.longitude })))
+      : toilet.distance,
     lat: toilet.latitude,
     lng: toilet.longitude,
     category: '공공 화장실',
     openAllDay: toilet.openAllDay,
     accessible: toilet.accessible,
-  })), [toilets]);
-
-  const focusedMapToilet = useMemo<MapToilet | null>(() => focusedToilet ? ({
-    id: `mock-${focusedToilet.id}`,
-    name: focusedToilet.name,
-    address: focusedToilet.address,
-    distance: focusedToilet.distance,
-    lat: focusedToilet.latitude,
-    lng: focusedToilet.longitude,
-    category: '추천 화장실',
-    openAllDay: focusedToilet.openAllDay,
-    accessible: focusedToilet.accessible,
-  }) : null, [focusedToilet]);
+  })), [currentPosition, toilets]);
 
   const requestCurrentLocation = useCallback((
     onLocated?: (position: Position) => void,
@@ -230,9 +223,11 @@ function LoadedMap({ appKey, toilets, query = '', focusedToilet }: MapProps & { 
     setStatusMessage('현재 지도 영역의 화장실을 최대한 많이 찾는 중입니다.');
 
     const searchPage = (keyword: string, cellBounds: kakao.maps.LatLngBounds, page: number) => new Promise<kakao.maps.services.PlacesSearchResult>((resolve, reject) => {
+      const timeoutId = window.setTimeout(() => resolve([]), SEARCH_REQUEST_TIMEOUT_MS);
       places.keywordSearch(
         keyword,
         (result, status) => {
+          window.clearTimeout(timeoutId);
           if (status === kakao.maps.services.Status.OK) {
             resolve(result);
             return;
@@ -278,9 +273,7 @@ function LoadedMap({ appKey, toilets, query = '', focusedToilet }: MapProps & { 
     const foundToilets = Array.from(uniquePlaces.values());
     setNearbyToilets(foundToilets);
     setHasCompletedSearch(true);
-    setSelectedToiletId((current) =>
-      current && (uniquePlaces.has(current) || current === focusedMapToilet?.id) ? current : null,
-    );
+    setSelectedToiletId((current) => current && uniquePlaces.has(current) ? current : null);
 
     const failedSearchCount = results.filter((result) => result.status === 'rejected').length;
     if (foundToilets.length > 0) {
@@ -297,14 +290,19 @@ function LoadedMap({ appKey, toilets, query = '', focusedToilet }: MapProps & { 
         ? '화장실 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'
         : '현재 지도 영역에서 등록된 화장실을 찾지 못했습니다.',
     );
-  }, [focusedMapToilet, map]);
+  }, [map]);
 
   const scheduleMapSearch = useCallback(() => {
     if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
     searchTimer.current = window.setTimeout(() => {
       void searchMapBounds();
-    }, 350);
+    }, SEARCH_DEBOUNCE_MS);
   }, [searchMapBounds]);
+
+  const refreshMapViewport = useCallback(() => {
+    setViewportRevision((current) => current + 1);
+    scheduleMapSearch();
+  }, [scheduleMapSearch]);
 
   useEffect(() => {
     if (map) scheduleMapSearch();
@@ -358,16 +356,6 @@ function LoadedMap({ appKey, toilets, query = '', focusedToilet }: MapProps & { 
     return () => window.clearTimeout(timer);
   }, [map, query]);
 
-  useEffect(() => {
-    if (!map || !focusedMapToilet || directionsTargetRef.current) return;
-
-    setSelectedToiletId(focusedMapToilet.id);
-    setMapLevel(3);
-    setStatusMessage(`${focusedMapToilet.name} 위치를 표시하고 있습니다.`);
-    map.setLevel(3);
-    map.panTo(new kakao.maps.LatLng(focusedMapToilet.lat, focusedMapToilet.lng));
-  }, [focusedMapToilet, map]);
-
   if (loading) return <div className="map-feedback">카카오 지도를 불러오는 중입니다.</div>;
 
   if (error) {
@@ -379,12 +367,20 @@ function LoadedMap({ appKey, toilets, query = '', focusedToilet }: MapProps & { 
     );
   }
 
-  const availableToilets = hasCompletedSearch ? nearbyToilets : fallbackToilets;
-  const visibleToilets = focusedMapToilet
-    ? [focusedMapToilet, ...availableToilets.filter((toilet) => toilet.id !== focusedMapToilet.id)]
-    : availableToilets;
+  const currentBounds = map?.getBounds();
+  const isInCurrentBounds = (toilet: MapToilet) => !currentBounds || currentBounds.contain(new kakao.maps.LatLng(toilet.lat, toilet.lng));
+  const fallbackToiletsInBounds = fallbackToilets.filter(isInCurrentBounds);
+  const nearbyToiletsInBounds = nearbyToilets.filter(isInCurrentBounds);
+  const importedToilets = fallbackToiletsInBounds.filter((fallback) => !nearbyToiletsInBounds.some((nearby) =>
+    nearby.name === fallback.name || getDistanceMeters(nearby, fallback) < 35
+  ));
+  const availableToilets = hasCompletedSearch
+    ? [...nearbyToiletsInBounds, ...importedToilets]
+    : fallbackToiletsInBounds;
+  void viewportRevision;
+  const visibleToilets = availableToilets;
   const displayedToilets = directionsTarget ? [directionsTarget] : visibleToilets;
-  const center = focusedMapToilet ?? currentPosition ?? DEFAULT_POSITION;
+  const center = currentPosition ?? DEFAULT_POSITION;
 
   const focusToilet = (toilet: MapToilet) => {
     setSelectedToiletId(toilet.id);
@@ -580,7 +576,8 @@ function LoadedMap({ appKey, toilets, query = '', focusedToilet }: MapProps & { 
             className="kakao-map"
             level={mapLevel}
             onCreate={setMap}
-            onIdle={scheduleMapSearch}
+            onZoomChanged={refreshMapViewport}
+            onIdle={refreshMapViewport}
             onClick={selectOriginOnMap}
           >
             {currentPosition && (
@@ -636,7 +633,10 @@ function LoadedMap({ appKey, toilets, query = '', focusedToilet }: MapProps & { 
           {isResultPanelOpen && (
             <aside id="map-result-panel" className="map-result-panel" aria-label="화장실 위치 목록">
             <div className="map-result-heading">
-              <strong>{directionsTarget ? '길찾기 목적지' : '화장실 위치'}</strong>
+              <div>
+                <strong>{directionsTarget ? '길찾기 목적지' : '화장실 위치'}</strong>
+                {!directionsTarget && <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">일부 위치 © OpenStreetMap</a>}
+              </div>
               <span>{displayedToilets.length}곳</span>
             </div>
             <div className="map-result-list">

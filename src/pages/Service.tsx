@@ -62,11 +62,9 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
   const [formError, setFormError] = useState('');
   const [requestCategory, setRequestCategory] = useState<'data' | 'other'>('data');
   const [requestMessage, setRequestMessage] = useState('');
-  const [requestRecipient, setRequestRecipient] = useState<'hayul9888@gmail.com' | 'sg8111320@gmail.com'>('hayul9888@gmail.com');
   const [requestState, setRequestState] = useState('');
   const [feedbackType, setFeedbackType] = useState<'bug' | 'suggestion'>('bug');
   const [feedbackArea, setFeedbackArea] = useState<'map' | 'service' | 'auth' | 'other'>('map');
-  const [feedbackRecipient, setFeedbackRecipient] = useState<'hayul9888@gmail.com' | 'sg8111320@gmail.com'>('hayul9888@gmail.com');
   const [feedbackTitle, setFeedbackTitle] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackState, setFeedbackState] = useState('');
@@ -145,13 +143,12 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
           id: crypto.randomUUID(),
           category: requestCategory,
           message: requestMessage.trim(),
-          recipientEmail: requestRecipient,
           createdAt: new Date().toISOString(),
         },
         ...saved,
       ]));
       setRequestMessage('');
-      setRequestState(`${requestRecipient} 담당자에게 보낼 요청이 임시 저장되었습니다.`);
+      setRequestState('검토 요청이 이 브라우저에 임시 저장되었습니다.');
     } catch {
       setRequestState('요청사항을 저장하지 못했습니다.');
     }
@@ -166,13 +163,6 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
 
     const title = feedbackTitle.trim();
     const message = feedbackMessage.trim();
-    const typeLabel = feedbackType === 'bug' ? '버그 신고' : '기능 건의';
-    const areaLabels = {
-      map: '지도·길찾기',
-      service: '고객센터',
-      auth: '로그인·회원가입',
-      other: '기타',
-    } as const;
 
     try {
       const saved = JSON.parse(localStorage.getItem(FEEDBACK_KEY) || '[]') as unknown[];
@@ -181,7 +171,6 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
           id: crypto.randomUUID(),
           type: feedbackType,
           area: feedbackArea,
-          recipientEmail: feedbackRecipient,
           title,
           message,
           createdAt: new Date().toISOString(),
@@ -189,17 +178,9 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
         ...saved,
       ]));
 
-      const subject = `[급해요 화장실][${typeLabel}] ${title}`;
-      const body = [
-        `접수 유형: ${typeLabel}`,
-        `관련 화면: ${areaLabels[feedbackArea]}`,
-        '',
-        message,
-      ].join('\n');
       setFeedbackTitle('');
       setFeedbackMessage('');
-      setFeedbackState('메일 작성창을 열었습니다. 내용을 확인한 뒤 전송해 주세요.');
-      window.location.href = `mailto:${feedbackRecipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      setFeedbackState('접수 내용이 이 브라우저에 임시 저장되었습니다.');
     } catch {
       setFeedbackState('내용을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
     }
@@ -208,7 +189,7 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
   return (
     <div className="service-page">
       <header className="service-page-header">
-        <button className="service-brand" type="button" onClick={onBack}>급해요<span>화장실</span></button>
+        <button className="service-brand" type="button" onClick={onBack}>참지마요<span>화장실</span></button>
         <nav className="service-page-actions" aria-label="고객센터 메뉴">
           <button className="service-back-button" type="button" onClick={onBack}>← 지도로 돌아가기</button>
           <button className="service-logout-button" type="button" onClick={() => setModal('logout')}>로그아웃</button>
@@ -336,14 +317,8 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
             <form className="service-form" onSubmit={saveRequest}>
               <label>요청 유형<select value={requestCategory} onChange={(event) => setRequestCategory(event.target.value as typeof requestCategory)}><option value="data">화장실 정보 수정</option><option value="other">기타 정보 요청</option></select></label>
               <label>요청 내용 *<textarea required minLength={10} maxLength={1000} value={requestMessage} onChange={(event) => { setRequestMessage(event.target.value); setRequestState(''); }} /></label>
-              <label>받는 사람 *
-                <select required value={requestRecipient} onChange={(event) => setRequestRecipient(event.target.value as typeof requestRecipient)}>
-                  <option value="hayul9888@gmail.com">hayul9888@gmail.com</option>
-                  <option value="sg8111320@gmail.com">sg8111320@gmail.com</option>
-                </select>
-              </label>
               {requestState && <p className="service-form-status" role="status">{requestState}</p>}
-              <div className="service-form-actions"><button type="button" onClick={closeModal}>닫기</button><button className="service-submit-button" type="submit">보내기</button></div>
+              <div className="service-form-actions"><button type="button" onClick={closeModal}>닫기</button><button className="service-submit-button" type="submit">검토 요청 저장</button></div>
             </form>
           </section>
         </div>
@@ -356,7 +331,7 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
               <div><p>서비스 개선 접수</p><h2 id="feedback-title">버그·기능 건의</h2></div>
               <button type="button" onClick={closeModal} aria-label="닫기">×</button>
             </div>
-            <p className="service-modal-description">접수 정보를 선택하고 내용을 작성하면 선택한 담당자의 메일 작성창으로 연결됩니다.</p>
+            <p className="service-modal-description">접수 정보를 선택하고 내용을 작성하면 이 브라우저에 임시 저장됩니다.</p>
             <form className="service-form" onSubmit={saveFeedback}>
               <div className="service-form-grid">
                 <label>접수 유형 *
@@ -371,12 +346,6 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
                     <option value="service">고객센터</option>
                     <option value="auth">로그인·회원가입</option>
                     <option value="other">기타</option>
-                  </select>
-                </label>
-                <label className="service-full-field">받는 담당자 *
-                  <select value={feedbackRecipient} onChange={(event) => setFeedbackRecipient(event.target.value as typeof feedbackRecipient)}>
-                    <option value="hayul9888@gmail.com">서비스 담당자 · hayul9888@gmail.com</option>
-                    <option value="sg8111320@gmail.com">개발 담당자 · sg8111320@gmail.com</option>
                   </select>
                 </label>
                 <label className="service-full-field">제목 *
@@ -410,7 +379,7 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
               {feedbackState && <p className="service-form-status" role="status">{feedbackState}</p>}
               <div className="service-form-actions">
                 <button type="button" onClick={closeModal}>닫기</button>
-                <button className="service-submit-button" type="submit">이메일로 보내기</button>
+                <button className="service-submit-button" type="submit">접수 내용 저장</button>
               </div>
             </form>
           </section>

@@ -49,6 +49,17 @@
   font: inherit;
   font-size: 12px;
   font-weight: 800;
+  cursor: pointer;
+}
+
+.service-page-actions .service-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.service-theme-toggle span {
+  font-size: 14px;
 }
 
 .service-page-actions .service-back-button {
@@ -811,6 +822,198 @@
   border-top: 1px solid rgba(255, 255, 255, .1);
   color: #7f8c99;
   font-size: 10px;
+}
+
+[data-theme='dark'] .service-page {
+  background: #080f1b;
+  color: #edf3f8;
+}
+
+[data-theme='dark'] .service-page-header,
+[data-theme='dark'] .service-page-main {
+  background: #111b2b;
+}
+
+[data-theme='dark'] .service-page-header {
+  border-bottom-color: #263448;
+}
+
+[data-theme='dark'] .service-brand,
+[data-theme='dark'] .service-guide h2,
+[data-theme='dark'] .service-section-title h2,
+[data-theme='dark'] .service-page .card-heading h3,
+[data-theme='dark'] .service-help-heading h2,
+[data-theme='dark'] .service-help-grid h3,
+[data-theme='dark'] .service-modal-header h2 {
+  color: #f4f7fa;
+}
+
+[data-theme='dark'] .service-page-actions button {
+  border-color: #314058;
+  background: #172337;
+  color: #d9e2ec;
+}
+
+[data-theme='dark'] .service-page-actions .service-theme-toggle {
+  border-color: #ff786e;
+  color: #ffaaa3;
+}
+
+[data-theme='dark'] .service-page-actions .service-back-button {
+  color: #ff8b82;
+}
+
+[data-theme='dark'] .service-page-actions .service-logout-button {
+  border-color: transparent;
+  color: #9caabc;
+}
+
+[data-theme='dark'] .service-hero > span,
+[data-theme='dark'] .service-guide li span,
+[data-theme='dark'] .service-section-title .service-distance-status span,
+[data-theme='dark'] .service-page .address,
+[data-theme='dark'] .service-empty-result,
+[data-theme='dark'] .service-help-heading > span,
+[data-theme='dark'] .service-help-grid p,
+[data-theme='dark'] .service-modal-description,
+[data-theme='dark'] .service-location-address {
+  color: #9eacbd;
+}
+
+[data-theme='dark'] .service-search,
+[data-theme='dark'] .service-guide,
+[data-theme='dark'] .service-page .toilet-card,
+[data-theme='dark'] .service-help-grid article {
+  border-color: #2b394d;
+  background: #152133;
+}
+
+[data-theme='dark'] .service-search input {
+  background: transparent;
+  color: #edf3f8;
+}
+
+[data-theme='dark'] .service-search input::placeholder,
+[data-theme='dark'] .service-form input::placeholder,
+[data-theme='dark'] .service-form textarea::placeholder {
+  color: #718096;
+}
+
+[data-theme='dark'] .service-distance-status button {
+  border-color: #334259;
+  background: #172337;
+  color: #ff8b82;
+}
+
+[data-theme='dark'] .service-page .toilet-card-button:hover {
+  border-color: #ff776d;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .28);
+}
+
+[data-theme='dark'] .service-page .tag {
+  background: #253247;
+  color: #b5c0ce;
+}
+
+[data-theme='dark'] .service-page .tag-open,
+[data-theme='dark'] .service-location-meta span {
+  background: #3b2427;
+  color: #ff9a91;
+}
+
+[data-theme='dark'] .service-page .pending-tag {
+  background: #3a321d;
+  color: #f6d77a;
+}
+
+[data-theme='dark'] .service-help-section {
+  background: #0d1726;
+}
+
+[data-theme='dark'] .service-help-grid article:hover {
+  border-color: #ff786e;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .24);
+}
+
+[data-theme='dark'] .service-help-grid button {
+  color: #e3eaf1;
+}
+
+[data-theme='dark'] .service-help-notice,
+[data-theme='dark'] .service-form-status {
+  background: #3a2427;
+  color: #ffb0aa;
+}
+
+[data-theme='dark'] .service-help-notice strong,
+[data-theme='dark'] .service-form-status {
+  color: #ff9188;
+}
+
+[data-theme='dark'] .service-modal-backdrop {
+  background: rgba(3, 8, 15, .75);
+}
+
+[data-theme='dark'] .service-modal {
+  background: #152133;
+  color: #edf3f8;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .5);
+}
+
+[data-theme='dark'] .service-modal-header > button {
+  background: #263449;
+  color: #c2cbd6;
+}
+
+[data-theme='dark'] .service-form label,
+[data-theme='dark'] .service-time-field legend,
+[data-theme='dark'] .service-time-field label {
+  color: #c5d0dc;
+}
+
+[data-theme='dark'] .service-time-field > div > span {
+  color: #8e9caf;
+}
+
+[data-theme='dark'] .service-form input,
+[data-theme='dark'] .service-form select,
+[data-theme='dark'] .service-form textarea {
+  border-color: #34435a;
+  background: #0e1827;
+  color: #edf3f8;
+  color-scheme: dark;
+}
+
+[data-theme='dark'] .service-time-field:disabled input,
+[data-theme='dark'] .service-form input:disabled {
+  background: #202c3e;
+  color: #8493a6;
+}
+
+[data-theme='dark'] .service-agreement {
+  background: #202c3e;
+  color: #e1e8ef;
+}
+
+[data-theme='dark'] .service-form-actions button {
+  background: #263449;
+  color: #c7d1dc;
+}
+
+[data-theme='dark'] .service-form-actions .service-submit-button,
+[data-theme='dark'] .service-map-link {
+  background: #ff6257;
+  color: #fff;
+}
+
+[data-theme='dark'] .service-location-map-status {
+  background: #0e1827;
+  color: #9eacbd;
+}
+
+[data-theme='dark'] .service-footer {
+  border-top-color: #263448;
+  background: #080f1b;
 }
 
 @media (max-width: 900px) {

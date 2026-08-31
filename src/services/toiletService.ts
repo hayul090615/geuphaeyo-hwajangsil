@@ -1,5 +1,6 @@
 import type { Toilet } from '../types/toilet';
 import { compressedSeoulToiletCoordinates } from '../data/seoulToiletData';
+import { compressedGyeonggiToilets } from '../data/gyeonggiToiletData';
 const mockToilets: Toilet[] = [
   {id:'1',name:'시청역 공중화장실',address:'서울 중구 세종대로 110',distance:'120m',openAllDay:true,accessible:true,latitude:37.5663,longitude:126.9779},
   {id:'2',name:'서울광장 화장실',address:'서울 중구 을지로 12',distance:'350m',openAllDay:true,accessible:false,latitude:37.5658,longitude:126.9781},
@@ -79,33 +80,63 @@ const mockToilets: Toilet[] = [
   {id:'osm-1378562867',name:'이수교 인근 주차장 화장실',address:'서울특별시',distance:'거리 계산 중',openAllDay:false,accessible:false,latitude:37.5039886,longitude:126.9774833},
   {id:'osm-1494834731',name:'수변화장실',address:'서울특별시',distance:'거리 계산 중',openAllDay:false,accessible:false,latitude:37.5445259,longitude:127.03763},
 ];
-type CompressedToiletRow = [id: string, latitude: number, longitude: number];
+type CompressedSeoulToiletRow = [id: string, latitude: number, longitude: number];
+type CompressedGyeonggiToiletRow = [
+  id: string,
+  name: string,
+  city: string,
+  latitude: number,
+  longitude: number,
+  openAllDay: boolean,
+  accessible: boolean,
+];
 
-async function loadCompressedSeoulToilets(): Promise<Toilet[]> {
+async function decompressRows<Row>(compressedData: string): Promise<Row[]> {
   if (typeof DecompressionStream === 'undefined') return [];
 
   try {
-    const bytes = Uint8Array.from(atob(compressedSeoulToiletCoordinates), (character) => character.charCodeAt(0));
+    const bytes = Uint8Array.from(atob(compressedData), (character) => character.charCodeAt(0));
     const compressedBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
     const decompressed = new Blob([compressedBuffer]).stream().pipeThrough(new DecompressionStream('gzip'));
-    const rows = JSON.parse(await new Response(decompressed).text()) as CompressedToiletRow[];
-
-    return rows.map(([id, latitude, longitude], index) => ({
-      id: `osm-${id}`,
-      name: `서울 공중화장실 ${index + 1}`,
-      address: '서울특별시',
-      distance: '거리 계산 중',
-      openAllDay: false,
-      accessible: false,
-      latitude,
-      longitude,
-    }));
+    return JSON.parse(await new Response(decompressed).text()) as Row[];
   } catch {
     return [];
   }
 }
 
+async function loadCompressedSeoulToilets(): Promise<Toilet[]> {
+  const rows = await decompressRows<CompressedSeoulToiletRow>(compressedSeoulToiletCoordinates);
+  return rows.map(([id, latitude, longitude], index) => ({
+    id: `osm-${id}`,
+    name: `서울 공중화장실 ${index + 1}`,
+    address: '서울특별시',
+    distance: '거리 계산 중',
+    openAllDay: false,
+    accessible: false,
+    latitude,
+    longitude,
+  }));
+}
+
+async function loadCompressedGyeonggiToilets(): Promise<Toilet[]> {
+  const rows = await decompressRows<CompressedGyeonggiToiletRow>(compressedGyeonggiToilets);
+  return rows.map(([id, name, city, latitude, longitude, openAllDay, accessible], index) => ({
+    id: `osm-gyeonggi-${id}`,
+    name: name || `경기도 공중화장실 ${index + 1}`,
+    address: city ? `경기도 ${city}` : '경기도',
+    distance: '거리 계산 중',
+    openAllDay,
+    accessible,
+    latitude,
+    longitude,
+  }));
+}
+
 // 추후 백엔드 API 호출로 교체할 수 있도록 데이터 접근을 별도 서비스로 분리합니다.
 export async function getNearbyToilets(): Promise<Toilet[]> {
-  return [...mockToilets, ...await loadCompressedSeoulToilets()];
+  const [seoulToilets, gyeonggiToilets] = await Promise.all([
+    loadCompressedSeoulToilets(),
+    loadCompressedGyeonggiToilets(),
+  ]);
+  return [...mockToilets, ...seoulToilets, ...gyeonggiToilets];
 }

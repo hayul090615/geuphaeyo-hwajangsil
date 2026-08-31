@@ -43,7 +43,7 @@
    ├─ Auth
    │  └─ authService → 현재 localStorage 기반 세션
    └─ Service
-      ├─ toiletService → 화장실 중복 확인용 임시 데이터
+      ├─ toiletService → mock 및 OSM 서울·경기도 정적 데이터
       └─ 화장실 제보·요청사항 → 현재 localStorage 임시 저장
 
 /api/directions (Vercel Function)
@@ -86,6 +86,9 @@ Express REST API
 │  │  ├─ ToiletCard.tsx
 │  │  ├─ ToiletLocationMap.tsx
 │  │  └─ GoogleSignInButton.tsx
+│  ├─ data/
+│  │  ├─ seoulToiletData.ts          # OSM 서울 화장실 압축 좌표
+│  │  └─ gyeonggiToiletData.ts       # OSM 경기도 화장실 압축 데이터
 │  ├─ pages/
 │  │  ├─ Home.tsx                    # 메인 지도 페이지
 │  │  ├─ Auth.tsx                    # 로그인·회원가입
@@ -94,7 +97,7 @@ Express REST API
 │  │  ├─ authService.ts              # 현재 로컬 인증 처리
 │  │  ├─ directionsService.ts        # 도보 경로 API 호출
 │  │  ├─ locationService.ts          # 좌표 거리 계산
-│  │  └─ toiletService.ts            # 현재 mock 화장실 데이터
+│  │  └─ toiletService.ts            # mock 및 압축 정적 화장실 데이터
 │  ├─ styles/
 │  ├─ types/
 │  │  ├─ auth.ts
@@ -230,6 +233,7 @@ npm --prefix backend run db:setup
 
 - 메인 지도, 검색, 마커, 목록과 상세정보
 - 현재 위치 및 지도 검색 결과 거리 표시
+- 서울 777곳·경기도 846곳의 OSM 화장실 위치 데이터
 - 도보 전용 길찾기와 경로 시각화
 - 로그인·회원가입·Google 로그인 화면
 - 화장실 제보와 요청사항 UI
@@ -239,7 +243,7 @@ npm --prefix backend run db:setup
 
 ### 임시 구현
 
-- 화장실 중복 확인 데이터: `toiletService`의 mock 데이터
+- 화장실 데이터: `toiletService`의 mock 및 [OpenStreetMap](https://www.openstreetmap.org/copyright) 정적 데이터
 - 일반 로그인과 세션: 브라우저 `localStorage`
 - 화장실 제보와 요청사항: 브라우저 `localStorage`
 

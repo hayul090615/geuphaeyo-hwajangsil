@@ -58,10 +58,6 @@ function loadSubmitted(): Toilet[] {
 export default function Service({ onBack, onLogout }: ServiceProps) {
   const [toilets, setToilets] = useState<Toilet[]>([]);
   const [modal, setModal] = useState<ModalName>(null);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('toilet-map-theme');
-    return savedTheme ? savedTheme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
   const [form, setForm] = useState<ToiletForm>(initialForm);
   const [formError, setFormError] = useState('');
   const [requestCategory, setRequestCategory] = useState<'data' | 'other'>('data');
@@ -73,13 +69,9 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackState, setFeedbackState] = useState('');
   useEffect(() => {
+    document.documentElement.dataset.theme = 'light';
     void getNearbyToilets().then((items) => setToilets([...loadSubmitted(), ...items]));
   }, []);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = isDarkMode ? 'dark' : 'light';
-    localStorage.setItem('toilet-map-theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
 
   useEffect(() => {
     if (!modal) return;
@@ -199,15 +191,6 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
       <header className="service-page-header">
         <button className="service-brand" type="button" onClick={onBack}>참지마요<span>화장실</span></button>
         <nav className="service-page-actions" aria-label="고객센터 메뉴">
-          <button
-            className="service-theme-toggle"
-            type="button"
-            onClick={() => setIsDarkMode((current) => !current)}
-            aria-label={isDarkMode ? '라이트 모드로 전환' : '다크 모드로 전환'}
-          >
-            <span aria-hidden="true">{isDarkMode ? '☀' : '☾'}</span>
-            {isDarkMode ? '라이트' : '다크'}
-          </button>
           <button className="service-back-button" type="button" onClick={onBack}>← 지도로 돌아가기</button>
           <button className="service-logout-button" type="button" onClick={() => setModal('logout')}>로그아웃</button>
         </nav>

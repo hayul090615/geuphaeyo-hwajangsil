@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://geuphaeyo-hwajangsil-integration-fr.vercel.app/sitemap.xml
+Sitemap: https://chamjimayo-hwajangsil.vercel.app/sitemap.xml

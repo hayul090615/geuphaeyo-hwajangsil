@@ -1,9 +1,10 @@
 import { getAuthToken } from './authService';
+import { Capacitor } from '@capacitor/core';
 import type { Feedback, FeedbackInput, FeedbackStatus } from '../types/feedback';
 
 function apiBaseUrl() {
   const configured = import.meta.env.VITE_API_BASE_URL?.trim();
-  return (configured || (import.meta.env.DEV ? 'http://localhost:3000' : '')).replace(/\/$/, '');
+  return (configured || (Capacitor.isNativePlatform() ? 'https://yourpooprainbow.vercel.app' : import.meta.env.DEV ? 'http://localhost:3000' : '')).replace(/\/$/, '');
 }
 
 async function apiRequest<T>(path: string, init: RequestInit): Promise<T> {

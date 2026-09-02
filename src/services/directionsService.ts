@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+
 export type DirectionsPoint = {
   latitude: number;
   longitude: number;
@@ -57,7 +59,7 @@ function isDirectionsRoute(value: unknown): value is DirectionsRoute {
 }
 
 export async function getDirections(request: DirectionsRequest): Promise<DirectionsRoute> {
-  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL?.trim() || (Capacitor.isNativePlatform() ? 'https://yourpooprainbow.vercel.app' : '')).replace(/\/$/, '');
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), 20_000);
   let response: Response;

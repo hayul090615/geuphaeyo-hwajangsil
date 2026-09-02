@@ -1,8 +1,9 @@
 import { getAuthToken } from './authService';
+import { Capacitor } from '@capacitor/core';
 
 export type AppNotification = { id: string; title: string; message: string; createdAt: string; readAt: string | null };
 
-function apiBaseUrl() { const configured = import.meta.env.VITE_API_BASE_URL?.trim(); return (configured || (import.meta.env.DEV ? 'http://localhost:3000' : '')).replace(/\/$/, ''); }
+function apiBaseUrl() { const configured = import.meta.env.VITE_API_BASE_URL?.trim(); return (configured || (Capacitor.isNativePlatform() ? 'https://yourpooprainbow.vercel.app' : import.meta.env.DEV ? 'http://localhost:3000' : '')).replace(/\/$/, ''); }
 
 async function request<T>(path: string, method = 'GET'): Promise<T> {
   const token = getAuthToken();

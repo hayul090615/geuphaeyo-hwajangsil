@@ -1,4 +1,5 @@
 import type { SignUpInput, User } from "../types/auth";
+import { Capacitor } from "@capacitor/core";
 
 const SESSION_KEY = "geuphaeyo-session";
 
@@ -6,7 +7,7 @@ type StoredSession = { user: User; token: string };
 
 function apiBaseUrl() {
   const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-  return (configuredBaseUrl || (import.meta.env.DEV ? "http://localhost:3000" : "")).replace(/\/$/, "");
+  return (configuredBaseUrl || (Capacitor.isNativePlatform() ? "https://yourpooprainbow.vercel.app" : import.meta.env.DEV ? "http://localhost:3000" : "")).replace(/\/$/, "");
 }
 
 function readSession(): StoredSession | null {

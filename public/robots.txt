@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://chamjimayo-hwajangsil.vercel.app/sitemap.xml
+Sitemap: https://yourpooprainbow.vercel.app/sitemap.xml

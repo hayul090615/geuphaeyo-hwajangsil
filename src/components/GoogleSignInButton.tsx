@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { GoogleSignIn } from "@capawesome/capacitor-google-sign-in";
 
 type GoogleSignInButtonProps = {
   onCredential: (credential: string) => void;
@@ -49,6 +51,7 @@ export default function GoogleSignInButton({ onCredential, onError }: GoogleSign
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+  const isNative = Capacitor.isNativePlatform();
 
   useEffect(() => {
     if (!clientId) {
@@ -57,6 +60,21 @@ export default function GoogleSignInButton({ onCredential, onError }: GoogleSign
     }
 
     let isActive = true;
+
+    if (isNative) {
+      void GoogleSignIn.initialize({ clientId })
+        .then(() => {
+          if (isActive) setIsLoading(false);
+        })
+        .catch((initializeError) => {
+          if (!isActive) return;
+          setIsLoading(false);
+          onError(initializeError instanceof Error ? initializeError.message : "Google 로그인을 준비하지 못했습니다.");
+        });
+      return () => {
+        isActive = false;
+      };
+    }
 
     void loadGoogleIdentityScript()
       .then(() => {
@@ -87,10 +105,36 @@ export default function GoogleSignInButton({ onCredential, onError }: GoogleSign
     return () => {
       isActive = false;
     };
-  }, [clientId, onCredential, onError]);
+  }, [clientId, isNative, onCredential, onError]);
 
   if (!clientId) {
     return <p className="google-auth-config">Google 로그인을 사용하려면 OAuth 클라이언트 설정이 필요합니다.</p>;
+  }
+
+  if (isNative) {
+    return (
+      <div className="google-auth-wrap">
+        <button
+          type="button"
+          className="google-auth-native-button"
+          disabled={isLoading}
+          onClick={async () => {
+            setIsLoading(true);
+            try {
+              const result = await GoogleSignIn.signIn();
+              if (!result.idToken) throw new Error("Google ID 토큰을 받지 못했습니다.");
+              onCredential(result.idToken);
+            } catch (signInError) {
+              onError(signInError instanceof Error ? signInError.message : "Google 로그인에 실패했습니다.");
+            } finally {
+              setIsLoading(false);
+            }
+          }}
+        >
+          {isLoading ? "Google 로그인 준비 중..." : "Google 계정으로 로그인"}
+        </button>
+      </div>
+    );
   }
 
   return (

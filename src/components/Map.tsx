@@ -7,8 +7,11 @@ import {
   useKakaoLoader,
 } from 'react-kakao-maps-sdk';
 import type { Toilet } from '../types/toilet';
+import keyMarkerUrl from '../assets/key-marker.svg';
 import { getDirections } from '../services/directionsService';
 import type { DirectionsRoute } from '../services/directionsService';
+import type { User } from '../types/auth';
+import ToiletReviewModal from './ToiletReviewModal';
 
 const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY?.trim();
 const DEFAULT_POSITION = { lat: 37.566826, lng: 126.978657 };
@@ -24,12 +27,21 @@ const TOILET_SEARCH_KEYWORDS = [
 const SEARCH_PAGE_COUNT = 1;
 const WIDE_SEARCH_GRID_SIZE = 2;
 const NEARBY_SEARCH_GRID_SIZE = 1;
-const SEARCH_CONCURRENCY = 16;
+const SEARCH_CONCURRENCY = 8;
 const SEARCH_REQUEST_TIMEOUT_MS = 2_200;
-const SEARCH_DEBOUNCE_MS = 200;
+const SEARCH_DEBOUNCE_MS = 500;
 const SEOUL_MAP_LEVEL = 8;
 const NEARBY_MAP_LEVEL = 5;
 const MAX_AUTO_LOCATION_ACCURACY_METERS = 150;
+const MAX_SEARCH_CACHE_ENTRIES = 24;
+
+const MAP_REGIONS = [
+  { id: 'seoul', label: '서울', color: '#ff5d4c', path: [{ lat: 37.55532, lng: 126.76443 }, { lat: 37.53716, lng: 126.79822 }, { lat: 37.51965, lng: 126.82542 }, { lat: 37.49832, lng: 126.81431 }, { lat: 37.47817, lng: 126.81725 }, { lat: 37.46531, lng: 126.88385 }, { lat: 37.4387, lng: 126.89898 }, { lat: 37.45009, lng: 126.92876 }, { lat: 37.43926, lng: 126.95653 }, { lat: 37.45711, lng: 126.98627 }, { lat: 37.44054, lng: 127.03526 }, { lat: 37.46718, lng: 127.12454 }, { lat: 37.52102, lng: 127.14534 }, { lat: 37.57371, lng: 127.17658 }, { lat: 37.63716, lng: 127.11216 }, { lat: 37.69591, lng: 127.078 }, { lat: 37.67522, lng: 126.99372 }, { lat: 37.6407, lng: 126.98594 }, { lat: 37.65153, lng: 126.93646 }, { lat: 37.63216, lng: 126.90644 }, { lat: 37.60574, lng: 126.90174 }, { lat: 37.58922, lng: 126.89327 }, { lat: 37.57728, lng: 126.86685 }, { lat: 37.60192, lng: 126.79976 }, { lat: 37.55532, lng: 126.76443 }] },
+  { id: 'incheon', label: '인천', color: '#3979d5', path: [{ lat: 37.688, lng: 126.526 }, { lat: 37.663, lng: 126.536 }, { lat: 37.636, lng: 126.538 }, { lat: 37.605, lng: 126.626 }, { lat: 37.592, lng: 126.725 }, { lat: 37.58, lng: 126.793 }, { lat: 37.55, lng: 126.764 }, { lat: 37.515, lng: 126.758 }, { lat: 37.485, lng: 126.749 }, { lat: 37.455, lng: 126.779 }, { lat: 37.433, lng: 126.77 }, { lat: 37.423, lng: 126.756 }, { lat: 37.407, lng: 126.749 }, { lat: 37.394, lng: 126.68 }, { lat: 37.407, lng: 126.62 }, { lat: 37.445, lng: 126.56 }, { lat: 37.52, lng: 126.52 }, { lat: 37.61, lng: 126.5 }, { lat: 37.688, lng: 126.526 }] },
+  { id: 'gyeonggi', label: '경기', color: '#36a269', path: [{ lat: 37.98, lng: 126.84 }, { lat: 38.01, lng: 127.25 }, { lat: 37.96, lng: 127.63 }, { lat: 37.84, lng: 127.92 }, { lat: 37.57, lng: 127.94 }, { lat: 37.19, lng: 127.82 }, { lat: 36.93, lng: 127.55 }, { lat: 36.96, lng: 127.08 }, { lat: 37.16, lng: 126.72 }, { lat: 37.38, lng: 126.5 }, { lat: 37.68, lng: 126.52 }, { lat: 37.88, lng: 126.66 }, { lat: 37.98, lng: 126.84 }] },
+];
+
+type MapRegionId = 'seoul' | 'incheon' | 'gyeonggi' | 'other';
 
 type Position = { lat: number; lng: number; accuracy?: number };
 type MapToilet = Position & {
@@ -41,9 +53,22 @@ type MapToilet = Position & {
   category?: string;
   openAllDay?: boolean;
   accessible?: boolean;
+  requiresAccessKey?: boolean;
+  requiresPassword?: boolean;
+  accessNote?: string;
+  dataSource: 'kakao' | 'osm' | 'seoul' | 'static';
 };
 type RouteInfo = DirectionsRoute;
-type MapProps = { toilets: Toilet[]; query?: string };
+type MapProps = { toilets: Toilet[]; query?: string; user: User | null; onLoginRequired: () => void };
+
+const ACCESS_KEY_MARKER_IMAGE = {
+  src: keyMarkerUrl,
+  size: { width: 40, height: 48 },
+  options: {
+    alt: 'Access key required toilet',
+    offset: { x: 20, y: 48 },
+  },
+};
 
 function formatDistance(distance?: string) {
   if (!distance) return undefined;
@@ -62,7 +87,15 @@ function toMapToilet(place: kakao.maps.services.PlacesSearchResultItem): MapToil
     lng: Number(place.x),
     phone: place.phone || undefined,
     category: place.category_name.split(' > ').pop(),
+    dataSource: 'kakao',
   };
+}
+
+function getDataConfidenceLabel(toilet: MapToilet) {
+  if (toilet.dataSource === 'kakao') return '카카오 장소 등록';
+  if (toilet.dataSource === 'seoul') return '서울시 공식 데이터';
+  if (toilet.dataSource === 'osm') return 'OSM 등록 · 현장 미확인';
+  return '정적 데이터 · 현장 미확인';
 }
 
 function splitBounds(bounds: kakao.maps.LatLngBounds, gridSize: number) {
@@ -112,7 +145,7 @@ function getDistanceMeters(origin: Position, destination: Position) {
   return 6_371_000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
-function Map({ toilets, query }: MapProps) {
+function Map({ toilets, query, user, onLoginRequired }: MapProps) {
   if (!KAKAO_MAP_KEY) {
     return (
       <div className="map-feedback" role="alert">
@@ -122,32 +155,49 @@ function Map({ toilets, query }: MapProps) {
     );
   }
 
-  return <LoadedMap appKey={KAKAO_MAP_KEY} toilets={toilets} query={query} />;
+  return <LoadedMap appKey={KAKAO_MAP_KEY} toilets={toilets} query={query} user={user} onLoginRequired={onLoginRequired} />;
 }
 
-function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string }) {
+function getMapRegion(toilet: MapToilet): MapRegionId {
+  if (toilet.address.includes('인천') || (toilet.lng < 126.79 && toilet.lat < 37.78)) return 'incheon';
+  if (toilet.address.includes('경기') || (toilet.lat < 37.42 || toilet.lat > 37.7 || toilet.lng > 127.185)) return 'gyeonggi';
+  if (toilet.address.includes('서울') || (toilet.lat >= 37.42 && toilet.lat <= 37.7 && toilet.lng >= 126.764 && toilet.lng <= 127.185)) return 'seoul';
+  return 'other';
+}
+
+function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapProps & { appKey: string }) {
   const [loading, error] = useKakaoLoader({
     appkey: appKey,
     libraries: ['services', 'clusterer'],
   });
   const [map, setMap] = useState<kakao.maps.Map | null>(null);
   const [mapLevel, setMapLevel] = useState(SEOUL_MAP_LEVEL);
-  const [viewportRevision, setViewportRevision] = useState(0);
+  const [viewportBounds, setViewportBounds] = useState<{
+    south: number;
+    west: number;
+    north: number;
+    east: number;
+  } | null>(null);
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [nearbyToilets, setNearbyToilets] = useState<MapToilet[]>([]);
   const [hasCompletedSearch, setHasCompletedSearch] = useState(false);
   const [selectedToiletId, setSelectedToiletId] = useState<string | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<MapToilet | null>(null);
   const [directionsTarget, setDirectionsTarget] = useState<MapToilet | null>(null);
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [routeMessage, setRouteMessage] = useState('');
   const [isSkyview, setIsSkyview] = useState(false);
   const [isSelectingOrigin, setIsSelectingOrigin] = useState(false);
   const [isResultPanelOpen, setIsResultPanelOpen] = useState(true);
+  const [showRestrictedOnly, setShowRestrictedOnly] = useState(false);
   const [statusMessage, setStatusMessage] = useState('서울 중심의 화장실을 찾는 중입니다.');
   const searchSequence = useRef(0);
   const searchTimer = useRef<number | null>(null);
+  const searchCache = useRef(new globalThis.Map<string, MapToilet[]>());
   const directionsTargetRef = useRef<MapToilet | null>(null);
   const directionsSequence = useRef(0);
+  const viewportKeyRef = useRef('');
+  const regionQuery = query.replace(/화장실/g, ' ').trim();
 
   const fallbackToilets = useMemo<MapToilet[]>(() => toilets.map((toilet) => ({
     id: `mock-${toilet.id}`,
@@ -161,6 +211,12 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     category: '공공 화장실',
     openAllDay: toilet.openAllDay,
     accessible: toilet.accessible,
+    requiresAccessKey: toilet.requiresAccessKey,
+    requiresPassword: toilet.requiresPassword,
+    accessNote: toilet.accessNote,
+    dataSource: toilet.id.startsWith('seoul-eunpyeong-')
+      ? 'seoul'
+      : toilet.id.startsWith('osm-') ? 'osm' : 'static',
   })), [currentPosition, toilets]);
 
   const requestCurrentLocation = useCallback((
@@ -211,11 +267,31 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
   }, []);
 
   const searchMapBounds = useCallback(async () => {
-    if (!map || !window.kakao?.maps?.services || directionsTargetRef.current) return;
+    if (!map || !window.kakao?.maps?.services || directionsTargetRef.current || regionQuery) return;
+    if (map.getLevel() > NEARBY_MAP_LEVEL) {
+      setNearbyToilets([]);
+      setHasCompletedSearch(false);
+      return;
+    }
 
     const requestId = ++searchSequence.current;
     const places = new kakao.maps.services.Places();
     const bounds = map.getBounds();
+    const southWest = bounds.getSouthWest();
+    const northEast = bounds.getNorthEast();
+    const searchCacheKey = [
+      map.getLevel(),
+      southWest.getLat().toFixed(3),
+      southWest.getLng().toFixed(3),
+      northEast.getLat().toFixed(3),
+      northEast.getLng().toFixed(3),
+    ].join(':');
+    const cachedToilets = searchCache.current.get(searchCacheKey);
+    if (cachedToilets) {
+      setNearbyToilets(cachedToilets);
+      setHasCompletedSearch(true);
+      return;
+    }
     const isWideSearch = map.getLevel() >= 7;
     const gridSize = isWideSearch ? WIDE_SEARCH_GRID_SIZE : NEARBY_SEARCH_GRID_SIZE;
     const searchKeywords = isWideSearch ? TOILET_SEARCH_KEYWORDS.slice(0, 4) : TOILET_SEARCH_KEYWORDS;
@@ -271,6 +347,11 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     });
 
     const foundToilets = Array.from(uniquePlaces.values());
+    searchCache.current.set(searchCacheKey, foundToilets);
+    if (searchCache.current.size > MAX_SEARCH_CACHE_ENTRIES) {
+      const oldestKey = searchCache.current.keys().next().value;
+      if (oldestKey) searchCache.current.delete(oldestKey);
+    }
     setNearbyToilets(foundToilets);
     setHasCompletedSearch(true);
     setSelectedToiletId((current) => current && uniquePlaces.has(current) ? current : null);
@@ -290,7 +371,7 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
         ? '화장실 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'
         : '현재 지도 영역에서 등록된 화장실을 찾지 못했습니다.',
     );
-  }, [map]);
+  }, [map, regionQuery]);
 
   const scheduleMapSearch = useCallback(() => {
     if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
@@ -300,9 +381,31 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
   }, [searchMapBounds]);
 
   const refreshMapViewport = useCallback(() => {
-    setViewportRevision((current) => current + 1);
+    if (map) {
+      const bounds = map.getBounds();
+      const southWest = bounds.getSouthWest();
+      const northEast = bounds.getNorthEast();
+      const nextBounds = {
+        south: southWest.getLat(),
+        west: southWest.getLng(),
+        north: northEast.getLat(),
+        east: northEast.getLng(),
+      };
+      const nextKey = [
+        map.getLevel(),
+        nextBounds.south.toFixed(4),
+        nextBounds.west.toFixed(4),
+        nextBounds.north.toFixed(4),
+        nextBounds.east.toFixed(4),
+      ].join(':');
+
+      if (viewportKeyRef.current !== nextKey) {
+        viewportKeyRef.current = nextKey;
+        setViewportBounds(nextBounds);
+      }
+    }
     scheduleMapSearch();
-  }, [scheduleMapSearch]);
+  }, [map, scheduleMapSearch]);
 
   useEffect(() => {
     if (map) scheduleMapSearch();
@@ -311,7 +414,6 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     };
   }, [map, scheduleMapSearch]);
   useEffect(() => {
-    const regionQuery = query.replace(/화장실/g, ' ').trim();
     if (!map || !window.kakao?.maps?.services || !regionQuery || directionsTargetRef.current) return;
 
     const timer = window.setTimeout(() => {
@@ -354,7 +456,31 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [map, query]);
+  }, [map, regionQuery]);
+
+  const availableToilets = useMemo(() => {
+    const isInCurrentBounds = (toilet: MapToilet) => !viewportBounds || (
+      toilet.lat >= viewportBounds.south &&
+      toilet.lat <= viewportBounds.north &&
+      toilet.lng >= viewportBounds.west &&
+      toilet.lng <= viewportBounds.east
+    );
+    const fallbackToiletsInBounds = fallbackToilets.filter(isInCurrentBounds);
+    if (!hasCompletedSearch) return fallbackToiletsInBounds;
+
+    const nearbyToiletsInBounds = nearbyToilets.filter(isInCurrentBounds);
+    const importedToilets = fallbackToiletsInBounds.filter((fallback) => !nearbyToiletsInBounds.some((nearby) =>
+      nearby.name === fallback.name || getDistanceMeters(nearby, fallback) < 35
+    ));
+    return [...nearbyToiletsInBounds, ...importedToilets];
+  }, [fallbackToilets, hasCompletedSearch, nearbyToilets, viewportBounds]);
+  const restrictedToiletCount = availableToilets.filter((toilet) => toilet.requiresAccessKey).length;
+  const visibleToilets = useMemo(() => (
+    showRestrictedOnly
+      ? availableToilets.filter((toilet) => toilet.requiresAccessKey)
+      : availableToilets
+  ), [availableToilets, showRestrictedOnly]);
+  const displayedToilets = directionsTarget ? [directionsTarget] : visibleToilets;
 
   if (loading) return <div className="map-feedback">카카오 지도를 불러오는 중입니다.</div>;
 
@@ -367,20 +493,37 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
     );
   }
 
-  const currentBounds = map?.getBounds();
-  const isInCurrentBounds = (toilet: MapToilet) => !currentBounds || currentBounds.contain(new kakao.maps.LatLng(toilet.lat, toilet.lng));
-  const fallbackToiletsInBounds = fallbackToilets.filter(isInCurrentBounds);
-  const nearbyToiletsInBounds = nearbyToilets.filter(isInCurrentBounds);
-  const importedToilets = fallbackToiletsInBounds.filter((fallback) => !nearbyToiletsInBounds.some((nearby) =>
-    nearby.name === fallback.name || getDistanceMeters(nearby, fallback) < 35
-  ));
-  const availableToilets = hasCompletedSearch
-    ? [...nearbyToiletsInBounds, ...importedToilets]
-    : fallbackToiletsInBounds;
-  void viewportRevision;
-  const visibleToilets = availableToilets;
-  const displayedToilets = directionsTarget ? [directionsTarget] : visibleToilets;
   const center = currentPosition ?? DEFAULT_POSITION;
+  const toiletsByRegion = (() => {
+    const groups: Record<MapRegionId, MapToilet[]> = { seoul: [], incheon: [], gyeonggi: [], other: [] };
+    displayedToilets.forEach((toilet) => groups[getMapRegion(toilet)].push(toilet));
+    return groups;
+  })();
+
+  const renderToiletMarker = (toilet: MapToilet) => (
+    <MapMarker
+      key={toilet.id}
+      position={{ lat: toilet.lat, lng: toilet.lng }}
+      image={toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
+      title={`${toilet.requiresPassword ? '비밀번호 필요 · ' : toilet.requiresAccessKey ? '출입 확인 필요 · ' : ''}${toilet.name}`}
+      onClick={() => setSelectedToiletId((current) => directionsTarget ? toilet.id : current === toilet.id ? null : toilet.id)}
+    >
+      {selectedToiletId === toilet.id && (
+        <div className="map-place-info">
+          <strong>{toilet.name}</strong><span>{toilet.address}</span>
+          <p className="map-place-description">{toilet.category || '화장실'}로 등록된 시설입니다. 운영시간과 현장 편의시설은 방문 전 확인해 주세요.</p>
+          <div className="map-place-meta">
+            {toilet.category && <span>{toilet.category}</span>}{toilet.distance && <em>{toilet.distance}</em>}
+            {toilet.openAllDay !== undefined && <span>{toilet.openAllDay ? '24시간 운영' : '운영시간 확인 필요'}</span>}
+            {toilet.requiresAccessKey && <span title={toilet.accessNote}>🔑 {toilet.requiresPassword ? '비밀번호 필요' : '출입 확인 필요'}</span>}
+            <span className="map-data-confidence">{getDataConfidenceLabel(toilet)}</span>{toilet.accessible && <span>휠체어 접근 가능</span>}
+          </div>
+          {toilet.phone && <a href={`tel:${toilet.phone}`}>{toilet.phone}</a>}
+          {!directionsTarget && <div className="map-place-actions"><button type="button" className="map-review-button" onClick={(event) => { event.stopPropagation(); setReviewTarget(toilet); }}>별점·청결도 리뷰</button><button type="button" className="map-direction-button" onClick={(event) => { event.stopPropagation(); startDirections(toilet); }}>길찾기 시작</button></div>}
+        </div>
+      )}
+    </MapMarker>
+  );
 
   const focusToilet = (toilet: MapToilet) => {
     setSelectedToiletId(toilet.id);
@@ -576,7 +719,6 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
             className="kakao-map"
             level={mapLevel}
             onCreate={setMap}
-            onZoomChanged={refreshMapViewport}
             onIdle={refreshMapViewport}
             onClick={selectOriginOnMap}
           >
@@ -601,7 +743,8 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
                 <MapMarker
                   key={toilet.id}
                   position={{ lat: toilet.lat, lng: toilet.lng }}
-                  title={toilet.name}
+                  image={toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
+                  title={`${toilet.requiresPassword ? '비밀번호 필요 · ' : toilet.requiresAccessKey ? '출입 확인 필요 · ' : ''}${toilet.name}`}
                   onClick={() => setSelectedToiletId((current) => directionsTarget ? toilet.id : current === toilet.id ? null : toilet.id)}
                 >
                   {selectedToiletId === toilet.id && (
@@ -615,13 +758,20 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
                         {toilet.category && <span>{toilet.category}</span>}
                         {toilet.distance && <em>{toilet.distance}</em>}
                         {toilet.openAllDay !== undefined && <span>{toilet.openAllDay ? '24시간 운영' : '운영시간 확인 필요'}</span>}
+                        {toilet.requiresAccessKey && (
+                          <span title={toilet.accessNote}>
+                            &#128273; {toilet.requiresPassword ? '비밀번호 필요' : '출입 확인 필요'}
+                          </span>
+                        )}
+                        <span className="map-data-confidence">{getDataConfidenceLabel(toilet)}</span>
                         {toilet.accessible && <span>휠체어 접근 가능</span>}
                       </div>
                       {toilet.phone && <a href={`tel:${toilet.phone}`}>{toilet.phone}</a>}
                       {!directionsTarget && (
-                        <button type="button" className="map-direction-button" onClick={(event) => { event.stopPropagation(); startDirections(toilet); }}>
-                          길찾기 시작
-                        </button>
+                        <div className="map-place-actions">
+                          <button type="button" className="map-review-button" onClick={(event) => { event.stopPropagation(); setReviewTarget(toilet); }}>별점·청결도 리뷰</button>
+                          <button type="button" className="map-direction-button" onClick={(event) => { event.stopPropagation(); startDirections(toilet); }}>길찾기 시작</button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -630,6 +780,28 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
             </MarkerClusterer>
           </KakaoMap>
 
+          {!directionsTarget && (
+            <div className="map-access-tools">
+              <button
+                type="button"
+                className={showRestrictedOnly ? 'map-access-filter is-active' : 'map-access-filter'}
+                aria-pressed={showRestrictedOnly}
+                onClick={() => setShowRestrictedOnly((current) => !current)}
+              >
+                <span aria-hidden="true">&#128273;</span>
+                출입 제한만
+                <strong>{restrictedToiletCount}</strong>
+              </button>
+              <div className="map-marker-legend" aria-label="지도 마커 안내">
+                <span>
+                  <i className="map-legend-default" aria-hidden="true" />
+                  일반 화장실
+                </span>
+                <span><img src={keyMarkerUrl} alt="" />비밀번호·출입 확인</span>
+              </div>
+            </div>
+          )}
+
           {isResultPanelOpen && (
             <aside id="map-result-panel" className="map-result-panel" aria-label="화장실 위치 목록">
             <div className="map-result-heading">
@@ -637,7 +809,7 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
                 <strong>{directionsTarget ? '길찾기 목적지' : '화장실 위치'}</strong>
                 {!directionsTarget && <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">일부 위치 © OpenStreetMap</a>}
               </div>
-              <span>{displayedToilets.length}곳</span>
+              <span>{visibleToilets.length}곳</span>
             </div>
             <div className="map-result-list">
               {directionsTarget ? (
@@ -681,10 +853,13 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
                       onClick={() => focusToilet(toilet)}
                       aria-pressed={selectedToiletId === toilet.id}
                     >
-                      <span className="map-result-number">{index + 1}</span>
+                      <span className="map-result-number" title={toilet.accessNote}>
+                        {toilet.requiresAccessKey ? <span aria-label="열쇠">&#128273;</span> : index + 1}
+                      </span>
                       <span className="map-result-copy">
                         <strong>{toilet.name}</strong>
                         <span>{toilet.address}</span>
+                        <small>{getDataConfidenceLabel(toilet)}</small>
                       </span>
                       {toilet.distance && <em>{toilet.distance}</em>}
                     </button>
@@ -696,6 +871,7 @@ function LoadedMap({ appKey, toilets, query = '' }: MapProps & { appKey: string 
           )}
         </div>
       </section>
+      {reviewTarget && <ToiletReviewModal toilet={reviewTarget} user={user} onClose={() => setReviewTarget(null)} onLogin={onLoginRequired} />}
     </>
   );
 }

@@ -12,6 +12,9 @@ export type Toilet = {
   hours?: string;
   genderType?: 'separated' | 'unisex' | 'unknown';
   babyFacility?: boolean;
+  requiresAccessKey?: boolean;
+  requiresPassword?: boolean;
+  accessNote?: string;
   verifiedAt?: string;
   note?: string;
   status?: 'pending' | 'approved';

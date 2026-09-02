@@ -1,6 +1,12 @@
 import type { Toilet } from '../types/toilet';
 import { compressedSeoulToiletCoordinates } from '../data/seoulToiletData';
 import { compressedGyeonggiToilets } from '../data/gyeonggiToiletData';
+import { compressedRegionalToilets } from '../data/regionalToiletData';
+import { restrictedRegionalToilets } from '../data/restrictedRegionalToiletData';
+import { eunpyeongToilets } from '../data/eunpyeongToiletData';
+import { seoulDistrictToilets } from '../data/seoulDistrictToiletData';
+import { incheonGoyangToilets } from '../data/incheonGoyangToiletData';
+import { expandedRegionalToilets } from '../data/expandedRegionalToiletData';
 const mockToilets: Toilet[] = [
   {id:'1',name:'시청역 공중화장실',address:'서울 중구 세종대로 110',distance:'120m',openAllDay:true,accessible:true,latitude:37.5663,longitude:126.9779},
   {id:'2',name:'서울광장 화장실',address:'서울 중구 을지로 12',distance:'350m',openAllDay:true,accessible:false,latitude:37.5658,longitude:126.9781},
@@ -81,7 +87,7 @@ const mockToilets: Toilet[] = [
   {id:'osm-1494834731',name:'수변화장실',address:'서울특별시',distance:'거리 계산 중',openAllDay:false,accessible:false,latitude:37.5445259,longitude:127.03763},
 ];
 type CompressedSeoulToiletRow = [id: string, latitude: number, longitude: number];
-type CompressedGyeonggiToiletRow = [
+type CompressedDetailedToiletRow = [
   id: string,
   name: string,
   city: string,
@@ -119,7 +125,7 @@ async function loadCompressedSeoulToilets(): Promise<Toilet[]> {
 }
 
 async function loadCompressedGyeonggiToilets(): Promise<Toilet[]> {
-  const rows = await decompressRows<CompressedGyeonggiToiletRow>(compressedGyeonggiToilets);
+  const rows = await decompressRows<CompressedDetailedToiletRow>(compressedGyeonggiToilets);
   return rows.map(([id, name, city, latitude, longitude, openAllDay, accessible], index) => ({
     id: `osm-gyeonggi-${id}`,
     name: name || `경기도 공중화장실 ${index + 1}`,
@@ -132,11 +138,113 @@ async function loadCompressedGyeonggiToilets(): Promise<Toilet[]> {
   }));
 }
 
+async function loadCompressedRegionalToilets(): Promise<Toilet[]> {
+  const rows = await decompressRows<CompressedDetailedToiletRow>(compressedRegionalToilets);
+  return rows.map(([id, name, area, latitude, longitude, openAllDay, accessible], index) => ({
+    id: `osm-regional-${id}`,
+    name: name || `지역 공중화장실 ${index + 1}`,
+    address: area && area !== '비수도권' ? area : '대한민국 비수도권',
+    distance: '거리 계산 중',
+    openAllDay,
+    accessible,
+    latitude,
+    longitude,
+  }));
+}
+
+function loadRestrictedRegionalToilets(): Toilet[] {
+  return restrictedRegionalToilets.map(([id, area, latitude, longitude, accessible, access], index) => ({
+    id: `osm-restricted-${id}`,
+    name: access === 'private' ? `비밀번호 필요 화장실 ${index + 1}` : `고객 전용 화장실 ${index + 1}`,
+    address: area,
+    distance: '거리 계산 중',
+    openAllDay: false,
+    accessible,
+    latitude,
+    longitude,
+    requiresAccessKey: true,
+    requiresPassword: access === 'private',
+    accessNote: access === 'private' ? '비공개 화장실: 비밀번호 필요' : '고객 전용: 직원 확인 등 출입 방법 확인 필요',
+  }));
+}
+
+function loadEunpyeongToilets(): Toilet[] {
+  return eunpyeongToilets.map(([id, name, address, latitude, longitude, openAllDay, accessible]) => ({
+    id: `seoul-eunpyeong-${id}`,
+    name,
+    address,
+    distance: '',
+    openAllDay,
+    accessible,
+    latitude,
+    longitude,
+  }));
+}
+
+function loadSeoulDistrictToilets(): Toilet[] {
+  return seoulDistrictToilets.map(([id, name, address, latitude, longitude]) => ({
+    id,
+    name,
+    address,
+    distance: '거리 계산 중',
+    openAllDay: false,
+    hours: '평일 구청 운영시간',
+    accessible: false,
+    latitude,
+    longitude,
+  }));
+}
+
+function loadIncheonGoyangToilets(): Toilet[] {
+  return incheonGoyangToilets.map(([id, name, address, latitude, longitude]) => ({
+    id,
+    name,
+    address,
+    distance: '거리 계산 중',
+    openAllDay: false,
+    hours: '평일 청사 운영시간',
+    accessible: false,
+    latitude,
+    longitude,
+  }));
+}
+
+function loadExpandedRegionalToilets(): Toilet[] {
+  return expandedRegionalToilets.map(([id, name, address, latitude, longitude]) => ({
+    id,
+    name,
+    address,
+    distance: '',
+    openAllDay: false,
+    hours: '현장 운영시간 확인',
+    accessible: false,
+    latitude,
+    longitude,
+  }));
+}
+
+export function getImmediateToilets(): Toilet[] {
+  return [
+    ...mockToilets,
+    ...loadEunpyeongToilets(),
+    ...loadSeoulDistrictToilets(),
+    ...loadIncheonGoyangToilets(),
+    ...loadExpandedRegionalToilets(),
+    ...loadRestrictedRegionalToilets(),
+  ];
+}
+
 // 추후 백엔드 API 호출로 교체할 수 있도록 데이터 접근을 별도 서비스로 분리합니다.
 export async function getNearbyToilets(): Promise<Toilet[]> {
-  const [seoulToilets, gyeonggiToilets] = await Promise.all([
+  const [seoulToilets, gyeonggiToilets, regionalToilets] = await Promise.all([
     loadCompressedSeoulToilets(),
     loadCompressedGyeonggiToilets(),
+    loadCompressedRegionalToilets(),
   ]);
-  return [...mockToilets, ...seoulToilets, ...gyeonggiToilets];
+  return [
+    ...getImmediateToilets(),
+    ...seoulToilets,
+    ...gyeonggiToilets,
+    ...regionalToilets,
+  ];
 }

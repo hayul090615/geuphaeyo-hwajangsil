@@ -1,7 +1,16 @@
 import { Map, MapMarker, useKakaoLoader } from 'react-kakao-maps-sdk';
 import type { Toilet } from '../types/toilet';
+import keyMarkerUrl from '../assets/key-marker.svg';
 
 const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY?.trim();
+const ACCESS_KEY_MARKER_IMAGE = {
+  src: keyMarkerUrl,
+  size: { width: 40, height: 48 },
+  options: {
+    alt: 'Access key required toilet',
+    offset: { x: 20, y: 48 },
+  },
+};
 
 export default function ToiletLocationMap({ toilet }: { toilet: Toilet }) {
   if (!KAKAO_MAP_KEY) {
@@ -27,7 +36,11 @@ function LoadedToiletLocationMap({ appKey, toilet }: { appKey: string; toilet: T
   const position = { lat: toilet.latitude, lng: toilet.longitude };
   return (
     <Map center={position} level={3} className="service-location-map">
-      <MapMarker position={position} title={toilet.name} />
+      <MapMarker
+        position={position}
+        image={toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
+        title={`${toilet.requiresPassword ? '비밀번호 필요 · ' : toilet.requiresAccessKey ? '출입 확인 필요 · ' : ''}${toilet.name}`}
+      />
     </Map>
   );
 }

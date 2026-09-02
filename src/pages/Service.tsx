@@ -2,8 +2,13 @@ import { useEffect, useState, type FormEvent } from 'react';
 import ServiceFooter from '../components/ServiceFooter';
 import { getNearbyToilets } from '../services/toiletService';
 import type { Toilet } from '../types/toilet';
+import type { User } from '../types/auth';
+import AdminFeedbackInbox from '../components/AdminFeedbackInbox';
+import { sendFeedback } from '../services/feedbackService';
+import NotificationBell from '../components/NotificationBell';
 
 type ServiceProps = {
+  user: User;
   onBack: () => void;
   onLogout: () => void;
 };
@@ -23,11 +28,9 @@ type ToiletForm = {
   agreed: boolean;
 };
 
-type ModalName = 'request' | 'add' | 'feedback' | 'logout' | null;
+type ModalName = 'add' | 'feedback' | 'logout' | null;
 
 const SUBMITTED_KEY = 'geuphaeyo-submitted-toilets';
-const REQUEST_KEY = 'geuphaeyo-service-requests';
-const FEEDBACK_KEY = 'geuphaeyo-feedback-reports';
 const initialForm = (): ToiletForm => ({
   name: '',
   address: '',
@@ -55,15 +58,12 @@ function loadSubmitted(): Toilet[] {
   }
 }
 
-export default function Service({ onBack, onLogout }: ServiceProps) {
+export default function Service({ user, onBack, onLogout }: ServiceProps) {
   const [toilets, setToilets] = useState<Toilet[]>([]);
   const [modal, setModal] = useState<ModalName>(null);
   const [form, setForm] = useState<ToiletForm>(initialForm);
   const [formError, setFormError] = useState('');
-  const [requestCategory, setRequestCategory] = useState<'data' | 'other'>('data');
-  const [requestMessage, setRequestMessage] = useState('');
-  const [requestState, setRequestState] = useState('');
-  const [feedbackType, setFeedbackType] = useState<'bug' | 'suggestion'>('bug');
+  const [feedbackType, setFeedbackType] = useState<'bug' | 'suggestion' | 'toilet_update'>('bug');
   const [feedbackArea, setFeedbackArea] = useState<'map' | 'service' | 'auth' | 'other'>('map');
   const [feedbackTitle, setFeedbackTitle] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState('');
@@ -83,7 +83,6 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
   const closeModal = () => {
     setModal(null);
     setFormError('');
-    setRequestState('');
     setFeedbackState('');
   };
 
@@ -130,67 +129,38 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
     closeModal();
   };
 
-  const saveRequest = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (requestMessage.trim().length < 10) {
-      setRequestState('요청 내용을 10자 이상 입력해 주세요.');
-      return;
-    }
-    try {
-      const saved = JSON.parse(localStorage.getItem(REQUEST_KEY) || '[]') as unknown[];
-      localStorage.setItem(REQUEST_KEY, JSON.stringify([
-        {
-          id: crypto.randomUUID(),
-          category: requestCategory,
-          message: requestMessage.trim(),
-          createdAt: new Date().toISOString(),
-        },
-        ...saved,
-      ]));
-      setRequestMessage('');
-      setRequestState('검토 요청이 이 브라우저에 임시 저장되었습니다.');
-    } catch {
-      setRequestState('요청사항을 저장하지 못했습니다.');
-    }
-  };
-
-  const saveFeedback = (event: FormEvent<HTMLFormElement>) => {
+  const saveFeedback = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (feedbackTitle.trim().length < 3 || feedbackMessage.trim().length < 10) {
       setFeedbackState('제목은 3자 이상, 상세 내용은 10자 이상 입력해 주세요.');
       return;
     }
 
-    const title = feedbackTitle.trim();
-    const message = feedbackMessage.trim();
-
     try {
-      const saved = JSON.parse(localStorage.getItem(FEEDBACK_KEY) || '[]') as unknown[];
-      localStorage.setItem(FEEDBACK_KEY, JSON.stringify([
-        {
-          id: crypto.randomUUID(),
-          type: feedbackType,
-          area: feedbackArea,
-          title,
-          message,
-          createdAt: new Date().toISOString(),
-        },
-        ...saved,
-      ]));
-
+      await sendFeedback({
+        type: feedbackType,
+        area: feedbackArea,
+        title: feedbackTitle.trim(),
+        message: feedbackMessage.trim(),
+      });
       setFeedbackTitle('');
       setFeedbackMessage('');
-      setFeedbackState('접수 내용이 이 브라우저에 임시 저장되었습니다.');
-    } catch {
-      setFeedbackState('내용을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      setFeedbackState('피드백이 관리자에게 안전하게 전송되었습니다.');
+    } catch (error) {
+      setFeedbackState(error instanceof Error ? error.message : '내용을 전송하지 못했습니다. 잠시 후 다시 시도해 주세요.');
     }
   };
 
   return (
     <div className="service-page">
       <header className="service-page-header">
-        <button className="service-brand" type="button" onClick={onBack}>참지마요<span>화장실</span></button>
+        <button className="service-brand" type="button" onClick={onBack}>니똥칼라똥</button>
         <nav className="service-page-actions" aria-label="고객센터 메뉴">
+          <div className="service-user">
+            {user.profileImage && <img src={user.profileImage} alt="" referrerPolicy="no-referrer" />}
+            <span><strong>{user.name}{user.role === 'admin' && <em className="admin-role-badge">관리자</em>}</strong><small>{user.email}</small></span>
+          </div>
+          <NotificationBell />
           <button className="service-back-button" type="button" onClick={onBack}>← 지도로 돌아가기</button>
           <button className="service-logout-button" type="button" onClick={() => setModal('logout')}>로그아웃</button>
         </nav>
@@ -208,7 +178,7 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
           <ol>
             <li><strong>장소 확인</strong><span>지도에서 같은 장소가 등록되어 있는지 먼저 확인하세요.</span></li>
             <li><strong>장소 제보</strong><span>주소와 운영시간 등 확인한 정보를 입력하세요.</span></li>
-            <li><strong>의견 남기기</strong><span>오류나 필요한 기능은 요청사항으로 알려주세요.</span></li>
+            <li><strong>통합 제보</strong><span>오류·기능 건의와 잘못된 화장실 정보를 함께 알려주세요.</span></li>
           </ol>
         </section>
 
@@ -216,7 +186,7 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
           <div className="service-help-heading">
             <p>서비스 이용 안내</p>
             <h2 id="service-help-title">필요한 도움을 바로 선택하세요.</h2>
-            <span>새로운 화장실을 제보하거나 잘못된 정보를 수정하고, 서비스에 필요한 의견을 보낼 수 있습니다.</span>
+            <span>새로운 화장실을 제보하고, 서비스 의견 또는 잘못된 화장실 정보를 하나의 제보함으로 보낼 수 있습니다.</span>
           </div>
 
           <div className="service-help-grid">
@@ -227,21 +197,8 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
             </article>
             <article>
               <span className="service-help-number">02</span>
-              <div><h3>버그·기능 건의</h3><p>오류가 발생한 화면이나 새롭게 필요한 기능을 자세히 알려주세요.</p></div>
-              <button type="button" onClick={() => setModal('feedback')}>버그·건의 접수하기 <span aria-hidden="true">→</span></button>
-            </article>
-            <article>
-              <span className="service-help-number">03</span>
-              <div><h3>화장실 정보 수정</h3><p>위치, 운영시간 또는 편의시설 정보가 다르다면 알려주세요.</p></div>
-              <button
-                type="button"
-                onClick={() => {
-                  setRequestCategory('data');
-                  setModal('request');
-                }}
-              >
-                수정 요청하기 <span aria-hidden="true">→</span>
-              </button>
+              <div><h3>통합 제보함</h3><p>버그·기능 건의와 화장실 정보 수정을 한 번에 접수하세요.</p></div>
+              <button type="button" onClick={() => setModal('feedback')}>통합 제보하기 <span aria-hidden="true">→</span></button>
             </article>
           </div>
 
@@ -251,11 +208,13 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
           </div>
         </section>
 
+        {user.role === 'admin' && <AdminFeedbackInbox />}
+
       </main>
 
       <ServiceFooter
         onMapOpen={onBack}
-        onRequestOpen={() => setModal('request')}
+        onFeedbackOpen={() => setModal('feedback')}
         onToiletAdd={() => setModal('add')}
       />
 
@@ -309,35 +268,21 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
         </div>
       )}
 
-      {modal === 'request' && (
-        <div className="service-modal-backdrop" onMouseDown={closeModal}>
-          <section className="service-modal" role="dialog" aria-modal="true" aria-labelledby="request-title" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="service-modal-header"><div><p>화장실 정보 바로잡기</p><h2 id="request-title">정보 수정 요청</h2></div><button type="button" onClick={closeModal} aria-label="닫기">×</button></div>
-            <p className="service-modal-description">위치, 운영시간, 편의시설 등 실제 정보와 다른 내용을 알려주세요.</p>
-            <form className="service-form" onSubmit={saveRequest}>
-              <label>요청 유형<select value={requestCategory} onChange={(event) => setRequestCategory(event.target.value as typeof requestCategory)}><option value="data">화장실 정보 수정</option><option value="other">기타 정보 요청</option></select></label>
-              <label>요청 내용 *<textarea required minLength={10} maxLength={1000} value={requestMessage} onChange={(event) => { setRequestMessage(event.target.value); setRequestState(''); }} /></label>
-              {requestState && <p className="service-form-status" role="status">{requestState}</p>}
-              <div className="service-form-actions"><button type="button" onClick={closeModal}>닫기</button><button className="service-submit-button" type="submit">검토 요청 저장</button></div>
-            </form>
-          </section>
-        </div>
-      )}
-
       {modal === 'feedback' && (
         <div className="service-modal-backdrop" onMouseDown={closeModal}>
           <section className="service-modal service-feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title" onMouseDown={(event) => event.stopPropagation()}>
             <div className="service-modal-header">
-              <div><p>서비스 개선 접수</p><h2 id="feedback-title">버그·기능 건의</h2></div>
+              <div><p>서비스·정보 통합 제보</p><h2 id="feedback-title">통합 제보함</h2></div>
               <button type="button" onClick={closeModal} aria-label="닫기">×</button>
             </div>
-            <p className="service-modal-description">접수 정보를 선택하고 내용을 작성하면 이 브라우저에 임시 저장됩니다.</p>
+            <p className="service-modal-description">전송한 내용은 관리자 계정에서만 확인할 수 있습니다.</p>
             <form className="service-form" onSubmit={saveFeedback}>
               <div className="service-form-grid">
                 <label>접수 유형 *
                   <select value={feedbackType} onChange={(event) => setFeedbackType(event.target.value as typeof feedbackType)}>
                     <option value="bug">버그 신고</option>
                     <option value="suggestion">기능 건의</option>
+                    <option value="toilet_update">화장실 정보 수정</option>
                   </select>
                 </label>
                 <label>관련 화면 *
@@ -359,7 +304,7 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
                       setFeedbackTitle(event.target.value);
                       setFeedbackState('');
                     }}
-                    placeholder="문제 또는 건의 내용을 간단히 입력해 주세요"
+                    placeholder="버그, 기능 건의 또는 수정할 화장실 정보를 입력해 주세요"
                   />
                 </label>
                 <label className="service-full-field">상세 내용 *
@@ -372,14 +317,14 @@ export default function Service({ onBack, onLogout }: ServiceProps) {
                       setFeedbackMessage(event.target.value);
                       setFeedbackState('');
                     }}
-                    placeholder="발생 과정, 기대한 결과, 실제 결과를 적어주세요"
+                    placeholder="화장실 이름·주소·수정할 항목 또는 발생 상황을 자세히 적어주세요"
                   />
                 </label>
               </div>
               {feedbackState && <p className="service-form-status" role="status">{feedbackState}</p>}
               <div className="service-form-actions">
                 <button type="button" onClick={closeModal}>닫기</button>
-                <button className="service-submit-button" type="submit">접수 내용 저장</button>
+                <button className="service-submit-button" type="submit">통합 제보 전송</button>
               </div>
             </form>
           </section>

@@ -1,78 +1,102 @@
 import type { SignUpInput, User } from "../types/auth";
 
-const USERS_KEY = "geuphaeyo-users";
 const SESSION_KEY = "geuphaeyo-session";
-type StoredUser = User & { password: string };
 
-function readUsers(): StoredUser[] {
-  try { return JSON.parse(localStorage.getItem(USERS_KEY) ?? "[]") as StoredUser[]; } catch { return []; }
+type StoredSession = { user: User; token: string };
+
+function apiBaseUrl() {
+  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+  return (configuredBaseUrl || (import.meta.env.DEV ? "http://localhost:3000" : "")).replace(/\/$/, "");
+}
+
+function readSession(): StoredSession | null {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SESSION_KEY) ?? "null") as Partial<StoredSession> | null;
+    if (!stored?.token || !stored.user?.id || !stored.user.email) return null;
+    return { token: stored.token, user: { ...stored.user, role: stored.user.role ?? "user" } };
+  } catch {
+    return null;
+  }
 }
 
 export function getCurrentUser(): User | null {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY) ?? "null") as User | null; } catch { return null; }
+  return readSession()?.user ?? null;
 }
 
-export function signUp(input: SignUpInput): User {
-  const users = readUsers();
-  if (users.some((user) => user.email === input.email)) throw new Error("이미 가입된 이메일입니다.");
-  const user: StoredUser = { id: crypto.randomUUID(), ...input };
-  localStorage.setItem(USERS_KEY, JSON.stringify([...users, user]));
+export function getAuthToken(): string | null {
+  return readSession()?.token ?? null;
+}
+
+async function requestAuth(path: string, body: Record<string, string>): Promise<User> {
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl()}/api/auth/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("로그인 서버에 연결하지 못했습니다.");
+  }
+  const result = await response.json().catch(() => ({})) as AuthResponse;
+  if (!response.ok) throw new Error(result.message || "인증 요청을 처리하지 못했습니다.");
+  return saveAuthResponse(result);
+}
+
+export function signUp(input: SignUpInput): Promise<User> {
+  return requestAuth("signup", input);
+}
+
+export function signIn(email: string, password: string): Promise<User> {
+  return requestAuth("login", { email, password });
+}
+
+type AuthResponse = {
+  user?: {
+    id?: string;
+    email?: string;
+    name?: string;
+    profileImage?: string | null;
+    role?: "user" | "admin";
+  };
+  token?: string;
+  message?: string;
+};
+
+function saveAuthResponse(result: AuthResponse): User {
+  if (!result.user?.id || !result.user.email || !result.user.name || !result.token) {
+    throw new Error("로그인 서버의 사용자 응답이 올바르지 않습니다.");
+  }
+  const user: User = {
+    id: result.user.id,
+    email: result.user.email,
+    nickname: result.user.name,
+    name: result.user.name,
+    profileImage: result.user.profileImage ?? null,
+    role: result.user.role ?? "user",
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ user, token: result.token }));
   return user;
 }
 
-export function signIn(email: string, password: string): User {
-  const user = readUsers().find((item) => item.email === email && item.password === password);
-  if (!user) throw new Error("이메일 또는 비밀번호를 확인해주세요.");
-  const session: User = { id: user.id, email: user.email, nickname: user.nickname };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  return session;
-}
-
-type GoogleIdTokenPayload = {
-  sub?: string;
-  email?: string;
-  name?: string;
-  aud?: string;
-  exp?: number;
-  iss?: string;
-  email_verified?: boolean;
-};
-
-function decodeGoogleIdToken(credential: string): GoogleIdTokenPayload {
-  const payload = credential.split(".")[1];
-  if (!payload) throw new Error("Google 로그인 응답이 올바르지 않습니다.");
-
+export async function signInWithGoogleCredential(credential: string): Promise<User> {
+  let response: Response;
   try {
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const normalized = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-    const decoded = decodeURIComponent(
-      Array.from(atob(normalized), (character) => `%${character.charCodeAt(0).toString(16).padStart(2, "0")}`).join("")
-    );
-    return JSON.parse(decoded) as GoogleIdTokenPayload;
+    response = await fetch(`${apiBaseUrl()}/api/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: credential }),
+    });
   } catch {
-    throw new Error("Google 계정 정보를 확인하지 못했습니다.");
-  }
-}
-
-export function signInWithGoogleCredential(credential: string): User {
-  const payload = decodeGoogleIdToken(credential);
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
-
-  const hasValidIssuer = payload.iss === "accounts.google.com" || payload.iss === "https://accounts.google.com";
-  if (!payload.sub || !payload.email || payload.email_verified !== true || payload.aud !== clientId || !hasValidIssuer) {
-    throw new Error("Google 로그인 정보를 확인하지 못했습니다.");
-  }
-  if (payload.exp && payload.exp * 1000 <= Date.now()) {
-    throw new Error("Google 로그인 시간이 만료되었습니다. 다시 시도해주세요.");
+    throw new Error("로그인 서버에 연결하지 못했습니다.");
   }
 
-  const session: User = {
-    id: `google:${payload.sub}`,
-    email: payload.email,
-    nickname: payload.name?.trim() || payload.email.split("@")[0],
-  };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  return session;
+  const result = await response.json().catch(() => ({})) as AuthResponse;
+  if (!response.ok) {
+    throw new Error(result.message || "Google 로그인에 실패했습니다.");
+  }
+
+  return saveAuthResponse(result);
 }
 
 export function signOut() { localStorage.removeItem(SESSION_KEY); }

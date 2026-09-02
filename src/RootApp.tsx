@@ -11,6 +11,7 @@ export default function RootApp() {
   const [user, setUser] = useState<User | null>(() => getCurrentUser());
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [view, setView] = useState<AppView>("map");
+  const handleLogout = () => { signOut(); setUser(null); setAuthMode("login"); setView("map"); };
   if (view === "auth") {
     return (
       <Auth
@@ -23,13 +24,14 @@ export default function RootApp() {
       />
     );
   }
-  if (view === "service") {
+  if (view === "service" && user) {
     return (
       <Service
+        user={user}
         onBack={() => setView("map")}
-        onLogout={() => { signOut(); setUser(null); setAuthMode("login"); setView("map"); }}
+        onLogout={handleLogout}
       />
     );
   }
-  return <Home onServiceOpen={() => setView(user ? "service" : "auth")} />;
+  return <Home user={user} onServiceOpen={() => setView(user ? "service" : "auth")} onLogout={handleLogout} />;
 }

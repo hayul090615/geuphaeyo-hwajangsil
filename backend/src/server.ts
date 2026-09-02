@@ -2,6 +2,11 @@ import express from 'express';
 import { env } from './config/env';
 import { pool } from './db/pool';
 import { directionsRouter } from './routes/directions';
+import { authRouter } from './routes/auth';
+import { feedbackRouter } from './routes/feedback';
+import { toiletReviewsRouter } from './routes/toilet-reviews';
+import { notificationsRouter } from './routes/notifications';
+import { requireAdmin } from './services/auth-service';
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
@@ -12,7 +17,7 @@ app.use((request, response, next) => {
   if (origin && env.frontendOrigins.includes(origin)) {
     response.setHeader('Access-Control-Allow-Origin', origin);
     response.setHeader('Vary', 'Origin');
-    response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   }
   if (request.method === 'OPTIONS') {
@@ -23,6 +28,10 @@ app.use((request, response, next) => {
 });
 
 app.use('/api/directions', directionsRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/feedback', feedbackRouter);
+app.use('/api/toilet-reviews', toiletReviewsRouter);
+app.use('/api/notifications', notificationsRouter);
 
 type ToiletInput = Record<string, string | number | boolean | null>;
 type InputMode = 'create' | 'update';
@@ -35,6 +44,10 @@ function hasOwn(object: Record<string, unknown>, key: string): boolean {
 
 function isValidToiletId(id: string): boolean {
   return /^[1-9]\d*$/.test(id) && BigInt(id) <= maxBigInt;
+}
+
+function getRouteId(value: string | string[]): string {
+  return Array.isArray(value) ? value[0] ?? '' : value;
 }
 
 function parseToiletInput(
@@ -181,7 +194,7 @@ app.get('/toilets', async (_request, response) => {
 });
 
 app.get('/toilets/:id', async (request, response) => {
-  const { id } = request.params;
+  const id = getRouteId(request.params.id);
 
   if (!isValidToiletId(id)) {
     response.status(400).json({ message: 'Invalid toilet id' });
@@ -207,7 +220,7 @@ app.get('/toilets/:id', async (request, response) => {
   }
 });
 
-app.post('/toilets', async (request, response) => {
+app.post('/toilets', requireAdmin, async (request, response) => {
   const parsedInput = parseToiletInput(request.body);
 
   if ('error' in parsedInput) {
@@ -243,8 +256,8 @@ app.post('/toilets', async (request, response) => {
   }
 });
 
-app.patch('/toilets/:id', async (request, response) => {
-  const { id } = request.params;
+app.patch('/toilets/:id', requireAdmin, async (request, response) => {
+  const id = getRouteId(request.params.id);
 
   if (!isValidToiletId(id)) {
     response.status(400).json({ message: 'Invalid toilet id' });
@@ -304,8 +317,8 @@ app.patch('/toilets/:id', async (request, response) => {
   }
 });
 
-app.delete('/toilets/:id', async (request, response) => {
-  const { id } = request.params;
+app.delete('/toilets/:id', requireAdmin, async (request, response) => {
+  const id = getRouteId(request.params.id);
 
   if (!isValidToiletId(id)) {
     response.status(400).json({ message: 'Invalid toilet id' });

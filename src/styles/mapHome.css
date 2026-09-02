@@ -67,6 +67,23 @@
   background: #303b46;
 }
 
+.header-logout-button {
+  order: 3;
+  padding: 8px 13px;
+  border: 1px solid #e1e5ea;
+  border-radius: 18px;
+  background: #fff4f2;
+  color: #d94b3b;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.header-logout-button:hover {
+  background: #ffe4df;
+}
+
 .map-home-main {
   display: grid;
   height: calc(100dvh - 68px + var(--map-page-extension));
@@ -121,6 +138,27 @@
   color: #7b8793;
   font-size: 17px;
   cursor: pointer;
+}
+
+.search-bar-copy {
+  display: grid;
+  flex: 1;
+  gap: 1px;
+  min-width: 0;
+}
+
+.search-bar-copy strong {
+  overflow: hidden;
+  color: #ff5d4c;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-bar-copy input {
+  min-width: 0;
 }
 
 .map-home .kakao-map-wrap {
@@ -332,6 +370,39 @@
   font-weight: 800;
   cursor: pointer;
 }
+
+.map-place-actions { display: grid; gap: 6px; margin-top: 8px; }
+.map-review-button { border: 1px solid #ffb7af; border-radius: 7px; padding: 7px 9px; background: #fff7f5; color: #d94b3b; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
+.review-modal-backdrop { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(23, 32, 42, .56); }
+.review-modal { width: min(560px, 100%); max-height: min(760px, 90vh); overflow-y: auto; padding: 25px; border-radius: 20px; background: #fff; box-shadow: 0 24px 70px rgba(0, 0, 0, .25); }
+.review-modal header { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.review-modal header p { margin: 0 0 5px; color: #ff5d4c; font-size: 12px; font-weight: 800; }
+.review-modal header h2 { margin: 0; font-size: 21px; letter-spacing: -1px; }
+.review-modal header > button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #f1f3f5; font-size: 24px; cursor: pointer; }
+.review-summary, .review-empty { margin: 0 0 18px; padding: 13px 15px; border-radius: 12px; background: #fff4f2; color: #7d4943; }
+.review-summary { display: flex; align-items: center; gap: 12px; }
+.review-summary strong { color: #e95041; font-size: 19px; }
+.review-summary span { font-size: 12px; }
+.review-form { display: grid; gap: 14px; padding: 17px; border: 1px solid #e5e9ed; border-radius: 14px; }
+.review-score { display: flex; align-items: center; gap: 10px; }
+.review-score > span { width: 45px; color: #53606d; font-size: 13px; font-weight: 800; }
+.review-score div { display: flex; gap: 2px; }
+.review-score button { border: 0; padding: 0; background: transparent; color: #d9dfe4; font-size: 23px; cursor: pointer; }
+.review-score button.is-filled { color: #ffae35; }
+.review-score strong { color: #69788a; font-size: 12px; }
+.review-form label { display: grid; gap: 7px; color: #53606d; font-size: 13px; font-weight: 800; }
+.review-form textarea { min-height: 88px; resize: vertical; border: 1px solid #dfe5ea; border-radius: 10px; padding: 10px; font: inherit; font-size: 13px; }
+.review-form > button, .review-login button { border: 0; border-radius: 9px; padding: 11px 14px; background: #ff5d4c; color: #fff; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.review-login { padding: 17px; border-radius: 13px; background: #f7f8fa; text-align: center; }
+.review-login p, .review-status { color: #69788a; font-size: 13px; line-height: 1.5; }
+.review-status { margin: 12px 0 0; }
+.review-list { display: grid; gap: 10px; margin-top: 18px; }
+.review-list article { padding: 13px 0; border-top: 1px solid #edf0f2; }
+.review-list article > div { display: flex; justify-content: space-between; gap: 12px; }
+.review-list strong { font-size: 13px; }.review-list span, .review-list time { color: #788594; font-size: 11px; }.review-list p { margin: 8px 0; color: #394858; font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+.review-delete-button { margin-top: 8px; border: 0; background: transparent; color: #d94b3b; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
+.review-edit-button,.review-cancel-button { margin-top:8px; margin-right:8px; border:0; background:transparent; color:#3977ff; font:inherit; font-size:11px; font-weight:800; cursor:pointer; }.review-edited-badge { margin-left:6px; padding:2px 5px; border-radius:999px; background:#fff0ed; color:#d94b3b; font-size:10px; font-style:normal; }
+.review-like-button { margin-top:8px; margin-right:8px; border:0; background:transparent; color:#8a949d; font:inherit; font-size:11px; font-weight:800; cursor:pointer; }.review-like-button.is-liked { color:#e95041; }
 
 .map-direction-button:hover {
   background: #e95041;
@@ -621,7 +692,9 @@
     height: calc(100% - 39px);
   }
 
-  .map-result-item {
+.map-result-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 68px;
     padding: 10px 11px;
   }
 
@@ -932,7 +1005,182 @@
   white-space: nowrap;
 }
 
+.map-access-tools {
+  position: absolute;
+  z-index: 13;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.map-access-filter,
+.map-marker-legend {
+  border: 1px solid #dde3e7;
+  border-radius: 12px;
+  background: #ffffffed;
+  box-shadow: 0 8px 24px #17202a1a;
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+}
+
+.map-access-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 8px 11px;
+  color: #53606d;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.map-access-filter strong {
+  display: grid;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  place-items: center;
+  border-radius: 10px;
+  background: #eef1f3;
+  color: #687580;
+  font-size: 10px;
+}
+
+.map-access-filter.is-active {
+  border-color: #f97316;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.map-access-filter.is-active strong {
+  background: #f97316;
+  color: #fff;
+}
+
+.map-marker-legend {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  color: #65717c;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.map-marker-legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.map-marker-legend img {
+  width: 18px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.map-region-label {
+  padding: 5px 10px;
+  border: 2px solid var(--region-color);
+  border-radius: 999px;
+  background: #fffc;
+  box-shadow: 0 3px 10px #20304024;
+  color: #27313b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .03em;
+  pointer-events: none;
+}
+
+[data-theme='dark'] .map-region-label {
+  background: #1e252de8;
+  color: #f4f7f9;
+}
+
+.map-legend-default {
+  width: 13px;
+  height: 13px;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: #ff5d4c;
+  box-shadow: 0 1px 4px #17202a40;
+  transform: rotate(-45deg);
+}
+
+.map-result-copy small {
+  overflow: hidden;
+  color: #8a96a3;
+  font-size: 9px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-home .map-place-meta .map-data-confidence {
+  background: #eef6ff;
+  color: #356a9a;
+}
+
+[data-theme='dark'] .map-access-filter,
+[data-theme='dark'] .map-marker-legend {
+  border-color: #3a444f;
+  background: #202831ed;
+  color: #cbd1d7;
+}
+
+[data-theme='dark'] .map-access-filter.is-active {
+  border-color: #fb923c;
+  background: #3b2920;
+  color: #fdba74;
+}
+
+[data-theme='dark'] .map-access-filter strong {
+  background: #303944;
+  color: #cbd1d7;
+}
+
+[data-theme='dark'] .map-access-filter.is-active strong {
+  background: #f97316;
+  color: #fff;
+}
+
+[data-theme='dark'] .map-home .map-place-meta .map-data-confidence {
+  background: #243746;
+  color: #9bc7ea;
+}
+
 @media (max-width: 760px) {
+  .map-access-tools {
+    top: 10px;
+    left: 10px;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .map-access-filter {
+    min-height: 34px;
+    padding: 6px 9px;
+  }
+
+  .map-marker-legend {
+    min-height: 32px;
+    gap: 7px;
+    padding: 5px 8px;
+    font-size: 9px;
+  }
+
+  .map-marker-legend img {
+    width: 15px;
+    height: 19px;
+  }
+
   .map-home .map-status-actions button {
     flex: 0 0 auto;
     padding: 7px 8px;

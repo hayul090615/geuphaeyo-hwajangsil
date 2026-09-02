@@ -1,8 +1,8 @@
-# 급해요 화장실 — Service Frontend & Backend
+# 니똥칼라똥 — Service Frontend & Backend
 
 사용자의 현재 위치를 기준으로 주변 화장실을 검색하고, 위치 정보와 도보 경로를 제공하는 지도 기반 웹 서비스입니다.
 
-- 서비스 주소: https://geuphaeyo-hwajangsil-integration-fr.vercel.app
+- 서비스 주소: https://yourpooprainbow.vercel.app
 - 작업 브랜치: `feature/service-frontend-backend`
 - 개발 인원 및 기간: 2명, 4주
 
@@ -43,7 +43,7 @@
    ├─ Auth
    │  └─ authService → 현재 localStorage 기반 세션
    └─ Service
-      ├─ toiletService → mock 및 OSM 서울·경기도 정적 데이터
+      ├─ toiletService → mock 및 OSM 서울·경기도·비수도권 정적 데이터
       └─ 화장실 제보·요청사항 → 현재 localStorage 임시 저장
 
 /api/directions (Vercel Function)
@@ -88,7 +88,8 @@ Express REST API
 │  │  └─ GoogleSignInButton.tsx
 │  ├─ data/
 │  │  ├─ seoulToiletData.ts          # OSM 서울 화장실 압축 좌표
-│  │  └─ gyeonggiToiletData.ts       # OSM 경기도 화장실 압축 데이터
+│  │  ├─ gyeonggiToiletData.ts       # OSM 경기도 화장실 압축 데이터
+│  │  └─ regionalToiletData.ts       # OSM 비수도권 화장실 압축 데이터
 │  ├─ pages/
 │  │  ├─ Home.tsx                    # 메인 지도 페이지
 │  │  ├─ Auth.tsx                    # 로그인·회원가입
@@ -182,6 +183,24 @@ PostgreSQL에는 계단 수, 비밀번호 필요 여부, 남녀 화장실 수, �
 
 응답에는 도보 거리, 예상 시간, 지도에 표시할 경로 좌표가 포함됩니다.
 
+### Google 로그인 API
+
+POST /api/auth/google 요청 본문에는 Google Identity Services가 발급한 idToken을
+전송합니다. 백엔드는 Google 서명과 대상 Client ID를 검증한 뒤 users 테이블에
+사용자를 추가하거나 기존 사용자의 이름·이메일·프로필 이미지를 갱신합니다.
+
+### 계정·피드백 API
+
+| Method | Endpoint | 권한 | 설명 |
+| --- | --- | --- | --- |
+| `POST` | `/api/auth/signup` | 공개 | 일반 사용자 계정 생성 및 세션 발급 |
+| `POST` | `/api/auth/login` | 공개 | 이메일 로그인 및 세션 발급 |
+| `POST` | `/api/feedback` | 로그인 사용자 | 관리자에게 피드백 전송 |
+| `GET` | `/api/feedback` | 관리자 | 전체 피드백 조회 |
+| `PATCH` | `/api/feedback/:id` | 관리자 | 피드백 처리 상태 변경 |
+
+`POST`, `PATCH`, `DELETE /toilets`는 관리자 세션만 호출할 수 있으며 조회 API는 공개입니다.
+
 ## 실행 방법
 
 ### 프론트엔드
@@ -205,6 +224,9 @@ VITE_GOOGLE_CLIENT_ID=example
 VITE_API_BASE_URL=http://localhost:3000
 ```
 
+VITE_GOOGLE_CLIENT_ID에는 Google Cloud Console에서 만든 Web OAuth Client ID를 넣습니다.
+Client Secret은 프론트엔드에서 사용하지 않습니다.
+
 실제 비밀값이 들어 있는 `.env`, `.env.local` 파일은 Git에 커밋하지 않습니다.
 
 ### 백엔드
@@ -227,15 +249,34 @@ PostgreSQL 초기 설정:
 npm --prefix backend run db:setup
 ```
 
+기존 데이터베이스에 Google 사용자 테이블만 추가할 때는
+npm --prefix backend run db:migrate:users 명령을 실행합니다.
+
+기존 데이터베이스에 역할·세션·피드백 테이블을 추가할 때는 다음 마이그레이션을 이어서 실행합니다.
+
+```bash
+npm --prefix backend run db:migrate:auth
+```
+
+관리자 계정은 `backend/.env`에 `ADMIN_EMAIL`, `ADMIN_PASSWORD`(12자 이상),
+`ADMIN_NAME`을 설정한 뒤 서버 측 명령으로 생성합니다. 비밀번호는 scrypt 해시로만 저장됩니다.
+
+```bash
+npm --prefix backend run admin:create
+```
+
+백엔드 환경변수에는 프론트와 동일한 Web OAuth Client ID를 GOOGLE_CLIENT_ID로
+설정하고, FRONTEND_ORIGINS에 프론트엔드 주소를 등록합니다.
+
 ## 현재 구현 상태
 
 ### 완료
 
 - 메인 지도, 검색, 마커, 목록과 상세정보
 - 현재 위치 및 지도 검색 결과 거리 표시
-- 서울 777곳·경기도 846곳의 OSM 화장실 위치 데이터
+- 서울 777곳·경기도 846곳·비수도권 3,397곳의 OSM 화장실 위치 데이터
 - 도보 전용 길찾기와 경로 시각화
-- 로그인·회원가입·Google 로그인 화면
+- Google ID token 백엔드 검증과 PostgreSQL 사용자 저장
 - 화장실 제보와 요청사항 UI
 - 모바일 반응형 UI와 다크 모드
 - Vercel 프로덕션 배포
@@ -244,7 +285,8 @@ npm --prefix backend run db:setup
 ### 임시 구현
 
 - 화장실 데이터: `toiletService`의 mock 및 [OpenStreetMap](https://www.openstreetmap.org/copyright) 정적 데이터
-- 일반 로그인과 세션: 브라우저 `localStorage`
+- 일반 이메일 로그인과 세션: 브라우저 `localStorage`
+- Google 로그인: 사용자 정보는 PostgreSQL에 저장하고 브라우저에는 표시용 로그인 상태만 저장
 - 화장실 제보와 요청사항: 브라우저 `localStorage`
 
 임시 구현은 백엔드 API가 준비되면 `src/services` 내부 구현만 교체할 수 있도록 UI와 분리했습니다.
@@ -256,7 +298,7 @@ npm --prefix backend run db:setup
 1. 프론트엔드 `camelCase`와 DB `snake_case` 변환 규칙 확정
 2. `GET /toilets`를 연결해 mock 화장실 데이터를 실제 데이터로 교체
 3. 화장실 상세조회와 신규 제보 `POST /toilets` 연결
-4. 로그인·Google ID 토큰을 백엔드에서 검증하는 인증 구조 협의
+4. Google 로그인 이후 서버 세션 또는 자체 액세스 토큰 도입 검토
 5. 요청사항 저장 API의 요청·응답 형식 설계
 6. 위치 권한 거부, API 장애, 빈 결과 등 예외 상황 테스트
 7. PC·모바일 통합 테스트와 접근성 개선
@@ -488,6 +530,7 @@ backend/
 
 - Node.js, Express, TypeScript
 - PostgreSQL, `pg`
+- Google ID token 검증, `google-auth-library`
 - `dotenv`
 
 ### 제공 API
@@ -499,6 +542,7 @@ backend/
 | `POST` | `/toilets` | 화장실 등록 |
 | `PATCH` | `/toilets/:id` | 화장실 정보 수정 |
 | `DELETE` | `/toilets/:id` | 화장실 삭제 |
+| `POST` | `/api/auth/google` | Google ID token 검증 및 사용자 저장 |
 
 ### 백엔드 실행
 

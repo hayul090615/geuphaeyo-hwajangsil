@@ -10,31 +10,34 @@ export default function Auth({ mode, onModeChange, onSuccess }: AuthProps) {
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState("");
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
 
-  const handleGoogleCredential = useCallback((credential: string) => {
+  const handleGoogleCredential = useCallback(async (credential: string) => {
     setError("");
+    setIsGoogleSigningIn(true);
     try {
-      onSuccess(signInWithGoogleCredential(credential));
+      onSuccess(await signInWithGoogleCredential(credential));
     } catch (googleError) {
       setError(googleError instanceof Error ? googleError.message : "Google 로그인에 실패했습니다.");
+    } finally {
+      setIsGoogleSigningIn(false);
     }
   }, [onSuccess]);
 
   const handleGoogleError = useCallback((message: string) => setError(message), []);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
     if (!email.includes("@")) return setError("올바른 이메일을 입력해주세요.");
     if (password.length < 8) return setError("비밀번호는 8자 이상 입력해주세요.");
     try {
-      const user = mode === "login" ? signIn(email, password) : signUp({ email, password, nickname: nickname.trim() });
-      if (mode === "signup") signIn(email, password);
+      const user = mode === "login" ? await signIn(email, password) : await signUp({ email, password, nickname: nickname.trim() });
       onSuccess(user);
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "잠시 후 다시 시도해주세요."); }
   }
 
   return <main className="auth-page"><section className="auth-card" aria-labelledby="auth-title">
-    <a className="auth-brand" href="/" onClick={(event) => { event.preventDefault(); onModeChange("login"); }}>급해요 <span>화장실</span></a>
+    <a className="auth-brand" href="/" onClick={(event) => { event.preventDefault(); onModeChange("login"); }}>니똥칼라똥</a>
     <p className="auth-eyebrow">내 주변 화장실을 더 빠르게</p>
     <h1 id="auth-title">{mode === "login" ? "다시 만나서 반가워요" : "처음 오셨군요"}</h1>
     <p className="auth-description">{mode === "login" ? "로그인하고 가까운 화장실을 찾아보세요." : "간단한 정보만 입력하고 시작해보세요."}</p>
@@ -47,7 +50,8 @@ export default function Auth({ mode, onModeChange, onSuccess }: AuthProps) {
     </form>
     <div className="auth-divider"><span>또는</span></div>
     <GoogleSignInButton onCredential={handleGoogleCredential} onError={handleGoogleError} />
+    {isGoogleSigningIn && <p className="google-auth-status" role="status">Google 계정을 확인하는 중입니다...</p>}
     <p className="auth-switch">{mode === "login" ? "아직 계정이 없나요?" : "이미 계정이 있나요?"} <button type="button" onClick={() => { setError(""); onModeChange(mode === "login" ? "signup" : "login"); }}>{mode === "login" ? "회원가입" : "로그인"}</button></p>
-    <p className="auth-note">현재는 테스트용 임시 세션입니다. 실제 서비스에서는 Google ID 토큰을 백엔드에서 검증해야 합니다.</p>
+    <p className="auth-note">Google 로그인 정보는 서버에서 검증한 뒤 안전하게 저장됩니다.</p>
   </section></main>;
 }

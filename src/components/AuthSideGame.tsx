@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type PointerEvent } from 'react';
+import rainbowPoopUrl from '../assets/rainbow-poop.png';
 
-type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; trail: number[] };
+type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number };
 const PLAYER_SPEED_PERCENT_PER_SECOND = 28;
 const PLAYER_MIN_X = 8;
 const PLAYER_MAX_X = 92;
@@ -13,7 +14,6 @@ const makeItem = (id: number, type: GameItem['type']): GameItem => ({
   x: 10 + Math.random() * 80,
   y: -10 - Math.random() * 70,
   speed: 0.009 + Math.random() * 0.004,
-  trail: [],
 });
 const initialItems = () => Array.from({ length: 8 }, (_, id) => makeItem(id, id % 3 === 0 ? 'poop' : 'coin'));
 type AuthSideGameProps = { onExit?: () => void };
@@ -42,6 +42,13 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     setPointerDirection(event);
   };
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse' && event.buttons === 0) {
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const nextPlayerX = Math.max(8, Math.min(92, ((event.clientX - bounds.left) / bounds.width) * 100));
+      playerXRef.current = nextPlayerX;
+      setPlayerX(nextPlayerX);
+      return;
+    }
     const pointerStart = pointerStartRef.current;
     if (!pointerStart || pointerStart.id !== event.pointerId) return;
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -91,7 +98,6 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       setPlayerX(nextPlayerX);
       setItems((current) => current.map((item) => {
         const nextY = item.y + item.speed * 16;
-        const trail = item.type === 'poop' ? [item.y, ...item.trail].slice(0, 5) : [];
         const nearPlayer = nextY > PLAYER_HIT_Y_MIN && nextY < PLAYER_HIT_Y_MAX && Math.abs(item.x - playerXRef.current) < ITEM_HIT_X_RADIUS;
         if (nearPlayer) {
           if (item.type === 'coin') {
@@ -103,7 +109,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
           setGameOver(true);
           return item;
         }
-        return nextY > 108 ? makeItem(nextId.current++, item.type) : { ...item, y: nextY, trail };
+        return nextY > 108 ? makeItem(nextId.current++, item.type) : { ...item, y: nextY };
       }));
       frame = window.requestAnimationFrame(tick);
     };
@@ -124,12 +130,11 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   return <div className="auth-side-game" aria-label="Poop dodge coin game" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerEnd} onPointerCancel={handlePointerEnd} onPointerLeave={handlePointerEnd}>
     <div className={`auth-game-score${coinEffect ? ' is-coin-pop' : ''}`}><span className="auth-coin-icon" aria-hidden="true" /> {score}</div>
     {items.map((item) => <Fragment key={item.id}>
-      {item.type === 'poop' && item.trail.map((y, index) => <span key={`${item.id}-trail-${index}`} className="auth-poop-trail" style={{ left: `${item.x}%`, top: `${y}%`, opacity: 0.32 - index * 0.055 }}>💩</span>)}
       <div className="auth-game-item" style={{ left: `${item.x}%`, top: `${item.y}%` }}>
-        <span className={`auth-falling-item ${item.type}`}>{item.type === 'coin' ? <span className="auth-coin-icon" aria-hidden="true" /> : '💩'}</span>
+        {item.type === 'coin' ? <span className="auth-falling-item coin"><span className="auth-coin-icon" aria-hidden="true" /></span> : <img className="auth-falling-item poop" src={rainbowPoopUrl} alt="" />}
       </div>
     </Fragment>)}
     <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="Player">🚽</div>
-    {gameOver && <div className="auth-game-over" role="dialog" aria-modal="true" aria-label="Game over"><strong>You got hit!</strong><span>Score: {score}</span><div><button type="button" onClick={restart}>Restart</button><button type="button" onClick={onExit}>Exit</button></div></div>}
+    {gameOver && <div className="auth-game-over" role="dialog" aria-modal="true" aria-label="게임 종료"><strong>똥에 맞았어요!</strong><span>점수: {score}</span><div><button type="button" onClick={restart}>다시하기</button><button type="button" onClick={onExit}>종료하기</button></div></div>}
   </div>;
 }

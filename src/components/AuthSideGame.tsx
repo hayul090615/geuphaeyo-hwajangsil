@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 
 type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; trail: number[] };
+const PLAYER_SPEED_PERCENT_PER_SECOND = 18;
+const PLAYER_MIN_X = 8;
+const PLAYER_MAX_X = 92;
+const PLAYER_HIT_Y_MIN = 88;
+const PLAYER_HIT_Y_MAX = 98;
+const ITEM_HIT_X_RADIUS = 6;
 const makeItem = (id: number, type: GameItem['type']): GameItem => ({
   id,
   type,
@@ -50,14 +56,17 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   useEffect(() => {
     if (gameOver) return undefined;
     let frame = 0;
-    const tick = () => {
-      const nextPlayerX = Math.max(8, Math.min(92, playerXRef.current + directionRef.current * 0.8));
+    let previousTime: number | null = null;
+    const tick = (time: number) => {
+      const elapsedSeconds = previousTime === null ? 0 : Math.min((time - previousTime) / 1000, 0.05);
+      previousTime = time;
+      const nextPlayerX = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, playerXRef.current + directionRef.current * PLAYER_SPEED_PERCENT_PER_SECOND * elapsedSeconds));
       playerXRef.current = nextPlayerX;
       setPlayerX(nextPlayerX);
       setItems((current) => current.map((item) => {
         const nextY = item.y + item.speed * 16;
         const trail = item.type === 'poop' ? [item.y, ...item.trail].slice(0, 5) : [];
-        const nearPlayer = nextY > 82 && nextY < 101 && Math.abs(item.x - playerXRef.current) < 11;
+        const nearPlayer = nextY > PLAYER_HIT_Y_MIN && nextY < PLAYER_HIT_Y_MAX && Math.abs(item.x - playerXRef.current) < ITEM_HIT_X_RADIUS;
         if (nearPlayer) {
           if (item.type === 'coin') {
             setScore((value) => value + 1);

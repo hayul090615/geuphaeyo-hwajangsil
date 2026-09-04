@@ -277,6 +277,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     <div className="auth-game-best">최고기록 {highScore}</div>
     <div className="auth-game-stage">{endlessLevel > 0 ? `STAGE ${MAX_STAGE}+${endlessLevel}` : `STAGE ${stage} / ${MAX_STAGE}`}</div>
     <div className="auth-game-spawn-line" aria-hidden="true" />
+    {coinEffect && <span className="auth-game-coin-burst" style={{ left: `${playerX}%` }} aria-hidden="true">+1 ✨</span>}
     {items.map((item) => <Fragment key={item.id}>
       <div className="auth-game-item" style={{ left: `${item.x}%`, top: `${item.y}%` }}>
         {item.type === 'coin' ? <span className="auth-falling-item coin"><span className="auth-coin-icon" aria-hidden="true" /></span> : item.size === 'cluster' ? <span className="auth-falling-item poop cluster" aria-hidden="true"><img src={rainbowPoopUrl} alt="" /><img src={rainbowPoopUrl} alt="" /><img src={rainbowPoopUrl} alt="" /></span> : <img className={`auth-falling-item poop${item.size === 'giant' ? ' giant' : ''}`} style={item.size === 'giant' ? { width: `${32 * item.scale}px`, height: `${32 * item.scale}px` } : undefined} src={rainbowPoopUrl} alt="" />}

@@ -11,7 +11,7 @@ import keyMarkerUrl from '../assets/key-marker.svg';
 import userMarkerUrl from '../assets/user-marker.svg';
 import { addUserToilet, deleteUserToilet, getUserToilets, updateUserToilet } from '../services/userToiletService';
 import { getDirections } from '../services/directionsService';
-import type { DirectionsRoute } from '../services/directionsService';
+import type { DirectionsMode, DirectionsRoute } from '../services/directionsService';
 import type { User } from '../types/auth';
 import ToiletReviewModal from './ToiletReviewModal';
 import AuthSideGame from './AuthSideGame';
@@ -37,6 +37,11 @@ const SEOUL_MAP_LEVEL = 8;
 const NEARBY_MAP_LEVEL = 5;
 const MAX_AUTO_LOCATION_ACCURACY_METERS = 150;
 const MAX_SEARCH_CACHE_ENTRIES = 24;
+const DIRECTIONS_MODE_OPTIONS: Array<{ mode: DirectionsMode; icon: string; label: string }> = [
+  { mode: 'walk', icon: '🚶', label: '도보' },
+  { mode: 'bicycle', icon: '🚲', label: '자전거' },
+  { mode: 'car', icon: '🚗', label: '자동차' },
+];
 
 const MAP_REGIONS = [
   { id: 'seoul', label: '서울', color: '#ff5d4c', path: [{ lat: 37.55532, lng: 126.76443 }, { lat: 37.53716, lng: 126.79822 }, { lat: 37.51965, lng: 126.82542 }, { lat: 37.49832, lng: 126.81431 }, { lat: 37.47817, lng: 126.81725 }, { lat: 37.46531, lng: 126.88385 }, { lat: 37.4387, lng: 126.89898 }, { lat: 37.45009, lng: 126.92876 }, { lat: 37.43926, lng: 126.95653 }, { lat: 37.45711, lng: 126.98627 }, { lat: 37.44054, lng: 127.03526 }, { lat: 37.46718, lng: 127.12454 }, { lat: 37.52102, lng: 127.14534 }, { lat: 37.57371, lng: 127.17658 }, { lat: 37.63716, lng: 127.11216 }, { lat: 37.69591, lng: 127.078 }, { lat: 37.67522, lng: 126.99372 }, { lat: 37.6407, lng: 126.98594 }, { lat: 37.65153, lng: 126.93646 }, { lat: 37.63216, lng: 126.90644 }, { lat: 37.60574, lng: 126.90174 }, { lat: 37.58922, lng: 126.89327 }, { lat: 37.57728, lng: 126.86685 }, { lat: 37.60192, lng: 126.79976 }, { lat: 37.55532, lng: 126.76443 }] },
@@ -147,6 +152,10 @@ function formatDuration(seconds: number) {
   return remainingHours > 0 ? `약 ${days}일 ${remainingHours}시간` : `약 ${days}일`;
 }
 
+function getDirectionsModeLabel(mode: DirectionsMode) {
+  return DIRECTIONS_MODE_OPTIONS.find((option) => option.mode === mode)?.label || '도보';
+}
+
 function getDistanceMeters(origin: Position, destination: Position) {
   const toRadians = (degrees: number) => degrees * (Math.PI / 180);
   const latitudeDelta = toRadians(destination.lat - origin.lat);
@@ -198,6 +207,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   const [selectedToiletId, setSelectedToiletId] = useState<string | null>(null);
   const [reviewTarget, setReviewTarget] = useState<MapToilet | null>(null);
   const [directionsTarget, setDirectionsTarget] = useState<MapToilet | null>(null);
+  const [directionsMode, setDirectionsMode] = useState<DirectionsMode>('walk');
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [routeMessage, setRouteMessage] = useState('');
   const [isSkyview, setIsSkyview] = useState(false);
@@ -568,10 +578,11 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     map?.panTo(new kakao.maps.LatLng(DEFAULT_POSITION.lat, DEFAULT_POSITION.lng));
   };
 
-  const loadDirections = async (origin: Position, toilet: MapToilet) => {
+  const loadDirections = async (origin: Position, toilet: MapToilet, mode: DirectionsMode) => {
     const requestId = ++directionsSequence.current;
     setRouteInfo(null);
-    setRouteMessage('도보 경로를 계산하는 중입니다.');
+    const modeLabel = getDirectionsModeLabel(mode);
+    setRouteMessage(`${modeLabel} 경로를 계산하는 중입니다.`);
 
     const fitRoute = (path: DirectionsRoute['path']) => {
       if (!map || path.length === 0) return;
@@ -584,7 +595,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
       const route = await getDirections({
         origin: { latitude: origin.lat, longitude: origin.lng },
         destination: { latitude: toilet.lat, longitude: toilet.lng, name: toilet.name },
-        mode: 'walk',
+        mode,
       });
       if (requestId !== directionsSequence.current) return;
       setRouteInfo(route);
@@ -598,7 +609,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
       setRouteMessage(
         snapDistance >= 50
           ? `출발점이 약 ${Math.round(snapDistance)}m 떨어진 도로에 연결됐습니다. 실제 출입구가 다르면 출발 위치를 조정해 주세요.${accuracyNotice}`
-          : `도보 추천 최적 경로를 표시하고 있습니다.${accuracyNotice}`,
+          : `${modeLabel} 추천 최적 경로를 표시하고 있습니다.${accuracyNotice}`,
       );
       fitRoute(route.path);
     } catch (error) {
@@ -607,7 +618,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
       setRouteMessage(
         error instanceof Error
           ? error.message
-          : '도보 경로를 불러오지 못했습니다.',
+          : `${modeLabel} 경로를 불러오지 못했습니다.`,
       );
     }
   };
@@ -622,6 +633,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     searchSequence.current += 1;
     directionsTargetRef.current = toilet;
     setDirectionsTarget(toilet);
+    setDirectionsMode('walk');
     setIsSelectingOrigin(false);
     setSelectedToiletId(toilet.id);
     setRouteMessage('현재 위치를 확인하는 중입니다.');
@@ -630,7 +642,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     requestCurrentLocation(
       (origin) => {
         if (directionsTargetRef.current?.id !== toilet.id) return;
-        void loadDirections(origin, toilet);
+        void loadDirections(origin, toilet, 'walk');
       },
       (message) => {
         if (directionsTargetRef.current?.id === toilet.id) {
@@ -648,6 +660,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     setDirectionsTarget(null);
     setIsSelectingOrigin(false);
     setRouteInfo(null);
+    setDirectionsMode('walk');
     setRouteMessage('');
     setSelectedToiletId(null);
     setMapLevel(NEARBY_MAP_LEVEL);
@@ -655,6 +668,12 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     map?.setLevel(NEARBY_MAP_LEVEL);
     map?.panTo(new kakao.maps.LatLng(center.lat, center.lng));
     scheduleMapSearch();
+  };
+
+  const changeDirectionsMode = (mode: DirectionsMode) => {
+    setDirectionsMode(mode);
+    if (!directionsTarget || !currentPosition || isSelectingOrigin || mode === directionsMode) return;
+    void loadDirections(currentPosition, directionsTarget, mode);
   };
 
   const toggleSkyview = () => {
@@ -694,7 +713,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     };
     setCurrentPosition(selectedOrigin);
     setIsSelectingOrigin(false);
-    void loadDirections(selectedOrigin, directionsTarget);
+    void loadDirections(selectedOrigin, directionsTarget, directionsMode);
   };
 
   return (
@@ -705,7 +724,21 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
             <>
               <span className="map-directions-label">길찾기 중 · {directionsTarget.name}</span>
               <div className="directions-mode-row">
-                <span className="directions-walk-label"><span aria-hidden="true">🚶</span>도보 길찾기</span>
+                <div className="directions-mode-tabs" role="group" aria-label="이동수단 선택">
+                  {DIRECTIONS_MODE_OPTIONS.map((option) => (
+                    <button
+                      key={option.mode}
+                      type="button"
+                      className={directionsMode === option.mode ? 'is-active' : ''}
+                      aria-pressed={directionsMode === option.mode}
+                      disabled={isSelectingOrigin}
+                      onClick={() => changeDirectionsMode(option.mode)}
+                    >
+                      <span aria-hidden="true">{option.icon}</span>
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
                 {routeInfo && (
                   <div className="map-route-metrics">
                     <strong className="map-route-duration" aria-label={`예상 소요 시간 ${formatDuration(routeInfo.durationSeconds)}`}>

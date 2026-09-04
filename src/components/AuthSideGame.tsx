@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type PointerEvent } from 'react';
 
 type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; trail: number[] };
 const PLAYER_SPEED_PERCENT_PER_SECOND = 28;
@@ -27,12 +27,38 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const playerXRef = useRef(50);
   const directionRef = useRef<-1 | 0 | 1>(0);
   const nextId = useRef(20);
+  const pointerStartRef = useRef<{ id: number; x: number; playerX: number } | null>(null);
 
   const setPointerDirection = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
-    directionRef.current = event.clientX < bounds.left + bounds.width / 2 ? -1 : 1;
+    const center = bounds.left + bounds.width / 2;
+    const deadZone = bounds.width * 0.15;
+    directionRef.current = event.clientX < center - deadZone ? -1 : event.clientX > center + deadZone ? 1 : 0;
   };
-  const stopPointerDirection = () => { directionRef.current = 0; };
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (gameOver) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    pointerStartRef.current = { id: event.pointerId, x: event.clientX, playerX: playerXRef.current };
+    setPointerDirection(event);
+  };
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const pointerStart = pointerStartRef.current;
+    if (!pointerStart || pointerStart.id !== event.pointerId) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const deltaPercent = ((event.clientX - pointerStart.x) / bounds.width) * 100;
+    if (Math.abs(deltaPercent) < 1) return;
+    const nextPlayerX = Math.max(8, Math.min(92, pointerStart.playerX + deltaPercent));
+    playerXRef.current = nextPlayerX;
+    setPlayerX(nextPlayerX);
+    directionRef.current = 0;
+  };
+  const stopPointerDirection = () => {
+    pointerStartRef.current = null;
+    directionRef.current = 0;
+  };
+  const handlePointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    if (pointerStartRef.current?.id === event.pointerId) stopPointerDirection();
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -95,12 +121,14 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     setCoinEffect(false);
   };
 
-  return <div className="auth-side-game" aria-label="Poop dodge coin game" onPointerDown={setPointerDirection} onPointerMove={(event) => { if (event.buttons > 0) setPointerDirection(event); }} onPointerUp={stopPointerDirection} onPointerCancel={stopPointerDirection} onPointerLeave={stopPointerDirection}>
-    <div className={`auth-game-score${coinEffect ? ' is-coin-pop' : ''}`}>🪙 {score}</div>
-    {items.map((item) => <div key={item.id} className="auth-game-item" style={{ left: `${item.x}%`, top: `${item.y}%` }}>
-      {item.type === 'poop' && item.trail.map((y, index) => <span key={`${item.id}-trail-${index}`} className="auth-poop-trail" style={{ top: `${y - item.y}%`, opacity: 0.32 - index * 0.055 }}>💩</span>)}
-      <span className={`auth-falling-item ${item.type}`}>{item.type === 'coin' ? '🪙' : '💩'}</span>
-    </div>)}
+  return <div className="auth-side-game" aria-label="Poop dodge coin game" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerEnd} onPointerCancel={handlePointerEnd} onPointerLeave={handlePointerEnd}>
+    <div className={`auth-game-score${coinEffect ? ' is-coin-pop' : ''}`}><span className="auth-coin-icon" aria-hidden="true" /> {score}</div>
+    {items.map((item) => <Fragment key={item.id}>
+      {item.type === 'poop' && item.trail.map((y, index) => <span key={`${item.id}-trail-${index}`} className="auth-poop-trail" style={{ left: `${item.x}%`, top: `${y}%`, opacity: 0.32 - index * 0.055 }}>💩</span>)}
+      <div className="auth-game-item" style={{ left: `${item.x}%`, top: `${item.y}%` }}>
+        <span className={`auth-falling-item ${item.type}`}>{item.type === 'coin' ? <span className="auth-coin-icon" aria-hidden="true" /> : '💩'}</span>
+      </div>
+    </Fragment>)}
     <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="Player">🚽</div>
     {gameOver && <div className="auth-game-over" role="dialog" aria-modal="true" aria-label="Game over"><strong>You got hit!</strong><span>Score: {score}</span><div><button type="button" onClick={restart}>Restart</button><button type="button" onClick={onExit}>Exit</button></div></div>}
   </div>;

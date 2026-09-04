@@ -7,15 +7,17 @@ const MAX_STAGE = 5;
 const GIANT_POOP_CHANCE = 0.16;
 const PLAYER_MIN_X = 8;
 const PLAYER_MAX_X = 92;
+const POOP_LINE_Y = 90;
 const PLAYER_HIT_Y_MIN = 88;
 const PLAYER_HIT_Y_MAX = 98;
 const ITEM_HIT_X_RADIUS = 6;
+const POOP_LINE_HIT_X_RADIUS = 9;
 const STAGE_ITEM_COUNTS = [
-  { poop: 2, coin: 6 },
-  { poop: 3, coin: 5 },
-  { poop: 4, coin: 4 },
-  { poop: 5, coin: 3 },
-  { poop: 6, coin: 2 },
+  { poop: 7, coin: 6 },
+  { poop: 8, coin: 5 },
+  { poop: 9, coin: 4 },
+  { poop: 10, coin: 3 },
+  { poop: 11, coin: 2 },
 ] as const;
 const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = 'normal'): GameItem => ({
   id,
@@ -41,6 +43,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const [stage, setStage] = useState(1);
   const [playerX, setPlayerX] = useState(50);
   const [coinEffect, setCoinEffect] = useState(false);
+  const [fireEffect, setFireEffect] = useState<{ id: number; x: number } | null>(null);
   const [gameOver, setGameOver] = useState(false);
   const playerXRef = useRef(50);
   const directionRef = useRef<-1 | 0 | 1>(0);
@@ -128,7 +131,16 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       let collectedCoins = 0;
       const nextItems = currentItems.map((item) => {
         const nextY = item.y + item.speed * 16;
+        const touchesPoopLine = item.type === 'poop'
+          && item.y < POOP_LINE_Y
+          && nextY >= POOP_LINE_Y
+          && Math.abs(item.x - playerXRef.current) < POOP_LINE_HIT_X_RADIUS;
         const nearPlayer = nextY > PLAYER_HIT_Y_MIN && nextY < PLAYER_HIT_Y_MAX && Math.abs(item.x - playerXRef.current) < ITEM_HIT_X_RADIUS;
+        if (touchesPoopLine) {
+          setFireEffect({ id: item.id, x: item.x });
+          window.setTimeout(() => setFireEffect((current) => current?.id === item.id ? null : current), 320);
+          return createRespawnItem(item, currentItems);
+        }
         if (nearPlayer) {
           if (item.type === 'coin') {
             collectedCoins += 1;
@@ -178,6 +190,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     setStage(1);
     setGameOver(false);
     setCoinEffect(false);
+    setFireEffect(null);
   };
 
   return <div className={`auth-side-game stage-${stage}`} aria-label="Poop dodge coin game" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerEnd} onPointerCancel={handlePointerEnd} onPointerLeave={handlePointerEnd}>
@@ -188,6 +201,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         {item.type === 'coin' ? <span className="auth-falling-item coin"><span className="auth-coin-icon" aria-hidden="true" /></span> : <img className={`auth-falling-item poop${item.size === 'giant' ? ' giant' : ''}`} src={rainbowPoopUrl} alt="" />}
       </div>
     </Fragment>)}
+    <div className={`auth-poop-line${fireEffect ? ' is-burning' : ''}`} style={{ left: `${playerX}%` }} aria-hidden="true" />
+    {fireEffect && <span className="auth-poop-fire" style={{ left: `${fireEffect.x}%` }} aria-hidden="true">🔥</span>}
     <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="Player">🚽</div>
     {gameOver && <div className="auth-game-over" role="dialog" aria-modal="true" aria-label="게임 종료"><strong>똥에 맞았어요!</strong><span>점수: {score}</span><div><button type="button" onClick={restart}>다시하기</button><button type="button" onClick={onExit}>종료하기</button></div></div>}
   </div>;

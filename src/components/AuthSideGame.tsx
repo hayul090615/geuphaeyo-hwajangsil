@@ -14,11 +14,11 @@ const PLAYER_HIT_Y_MIN = 88;
 const PLAYER_HIT_Y_MAX = 98;
 const ITEM_HIT_X_RADIUS = 6;
 const STAGE_ITEM_COUNTS = [
-  { poop: 7, coin: 6 },
-  { poop: 8, coin: 5 },
-  { poop: 9, coin: 4 },
-  { poop: 10, coin: 3 },
-  { poop: 11, coin: 2 },
+  { poop: 5, coin: 6 },
+  { poop: 6, coin: 5 },
+  { poop: 7, coin: 4 },
+  { poop: 8, coin: 3 },
+  { poop: 10, coin: 2 },
 ] as const;
 const getLargePoopScale = (stage: number) => stage === 2 ? 2 : stage === 3 ? 2.5 : 3;
 const getEndlessLevel = (score: number) => score < MAX_STAGE * 10 ? 0 : Math.floor((score - MAX_STAGE * 10) / 10) + 1;

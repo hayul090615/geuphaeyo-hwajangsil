@@ -9,10 +9,11 @@ const CLUSTER_POOP_CHANCE = 0.2;
 const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
 const PLAYER_MIN_X = 8;
 const PLAYER_MAX_X = 92;
-const POOP_LINE_Y = 14;
-const PLAYER_HIT_Y_MIN = 88;
-const PLAYER_HIT_Y_MAX = 98;
-const ITEM_HIT_X_RADIUS = 6;
+const SPAWN_LINE_Y = 12;
+const BOTTOM_LINE_Y = 90;
+const PLAYER_HIT_Y_CENTER = 94;
+const PLAYER_HIT_Y_RADIUS = 2.5;
+const ITEM_HIT_X_RADIUS = 3.2;
 const STAGE_ITEM_COUNTS = [
   { poop: 5, coin: 6 },
   { poop: 6, coin: 5 },
@@ -36,13 +37,19 @@ const saveHighScore = (score: number) => {
     // localStorage may be unavailable in private browsing contexts.
   }
 };
+const getItemHitXRadius = (item: GameItem) => item.size === 'giant'
+  ? Math.min(6.4, ITEM_HIT_X_RADIUS * item.scale)
+  : item.size === 'cluster' ? ITEM_HIT_X_RADIUS * 1.6 : ITEM_HIT_X_RADIUS;
+const getItemHitYRadius = (item: GameItem) => item.size === 'giant'
+  ? Math.min(5, PLAYER_HIT_Y_RADIUS * item.scale)
+  : item.size === 'cluster' ? PLAYER_HIT_Y_RADIUS * 1.5 : PLAYER_HIT_Y_RADIUS;
 const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = 'normal', scale = 1): GameItem => ({
   id,
   type,
   size,
   scale,
   x: 10 + Math.random() * 80,
-  y: 16 + Math.random() * 26,
+  y: SPAWN_LINE_Y,
   speed: 0.009 + Math.random() * 0.004,
 });
 const createStageItems = (stage: number, endlessLevel = 0) => {
@@ -174,7 +181,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       let collectedCoins = 0;
       const nextItems = currentItems.map((item) => {
         const nextY = item.y + item.speed * 16;
-        const nearPlayer = nextY > PLAYER_HIT_Y_MIN && nextY < PLAYER_HIT_Y_MAX && Math.abs(item.x - playerXRef.current) < ITEM_HIT_X_RADIUS;
+        const nearPlayer = Math.abs(nextY - PLAYER_HIT_Y_CENTER) < getItemHitYRadius(item)
+          && Math.abs(item.x - playerXRef.current) < getItemHitXRadius(item);
         if (nearPlayer) {
           if (item.type === 'coin') {
             collectedCoins += 1;
@@ -191,7 +199,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
           }
           return createRespawnItem(item, currentItems);
         }
-        const touchesPoopLine = item.y < POOP_LINE_Y && nextY >= POOP_LINE_Y;
+        const touchesPoopLine = item.y < BOTTOM_LINE_Y && nextY >= BOTTOM_LINE_Y;
         if (touchesPoopLine) {
           setFireEffect({ id: item.id, x: item.x });
           window.setTimeout(() => setFireEffect((current) => current?.id === item.id ? null : current), 320);
@@ -266,6 +274,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     <div className={`auth-game-score${coinEffect ? ' is-coin-pop' : ''}`}><span className="auth-coin-icon" aria-hidden="true" /> {score}</div>
     <div className="auth-game-best">최고기록 {highScore}</div>
     <div className="auth-game-stage">{endlessLevel > 0 ? `STAGE ${MAX_STAGE}+${endlessLevel}` : `STAGE ${stage} / ${MAX_STAGE}`}</div>
+    <div className="auth-game-spawn-line" aria-hidden="true" />
     {items.map((item) => <Fragment key={item.id}>
       <div className="auth-game-item" style={{ left: `${item.x}%`, top: `${item.y}%` }}>
         {item.type === 'coin' ? <span className="auth-falling-item coin"><span className="auth-coin-icon" aria-hidden="true" /></span> : item.size === 'cluster' ? <span className="auth-falling-item poop cluster" aria-hidden="true"><img src={rainbowPoopUrl} alt="" /><img src={rainbowPoopUrl} alt="" /><img src={rainbowPoopUrl} alt="" /></span> : <img className={`auth-falling-item poop${item.size === 'giant' ? ' giant' : ''}`} style={item.size === 'giant' ? { width: `${32 * item.scale}px`, height: `${32 * item.scale}px` } : undefined} src={rainbowPoopUrl} alt="" />}

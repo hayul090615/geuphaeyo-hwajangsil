@@ -10,10 +10,12 @@ const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
 const PLAYER_MIN_X = 8;
 const PLAYER_MAX_X = 92;
 const SPAWN_LINE_Y = 12;
-const BOTTOM_LINE_Y = 90;
+const BOTTOM_LINE_Y = 96;
 const PLAYER_HIT_Y_CENTER = 94;
-const PLAYER_HIT_Y_RADIUS = 2.5;
-const ITEM_HIT_X_RADIUS = 3.2;
+const PLAYER_HIT_Y_RADIUS = 2.2;
+const ITEM_HIT_X_RADIUS = 2.8;
+const COIN_HIT_X_RADIUS = 6;
+const COIN_HIT_Y_RADIUS = 3.5;
 const STAGE_ITEM_COUNTS = [
   { poop: 5, coin: 6 },
   { poop: 6, coin: 5 },
@@ -37,11 +39,11 @@ const saveHighScore = (score: number) => {
     // localStorage may be unavailable in private browsing contexts.
   }
 };
-const getItemHitXRadius = (item: GameItem) => item.size === 'giant'
-  ? Math.min(6.4, ITEM_HIT_X_RADIUS * item.scale)
-  : item.size === 'cluster' ? ITEM_HIT_X_RADIUS * 1.6 : ITEM_HIT_X_RADIUS;
-const getItemHitYRadius = (item: GameItem) => item.size === 'giant'
-  ? Math.min(5, PLAYER_HIT_Y_RADIUS * item.scale)
+const getItemHitXRadius = (item: GameItem) => item.type === 'coin' ? COIN_HIT_X_RADIUS : item.size === 'giant'
+  ? Math.min(5.6, ITEM_HIT_X_RADIUS * item.scale)
+  : item.size === 'cluster' ? ITEM_HIT_X_RADIUS * 1.5 : ITEM_HIT_X_RADIUS;
+const getItemHitYRadius = (item: GameItem) => item.type === 'coin' ? COIN_HIT_Y_RADIUS : item.size === 'giant'
+  ? Math.min(4.5, PLAYER_HIT_Y_RADIUS * item.scale)
   : item.size === 'cluster' ? PLAYER_HIT_Y_RADIUS * 1.5 : PLAYER_HIT_Y_RADIUS;
 const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = 'normal', scale = 1): GameItem => ({
   id,

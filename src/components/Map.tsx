@@ -8,10 +8,13 @@ import {
 } from 'react-kakao-maps-sdk';
 import type { Toilet } from '../types/toilet';
 import keyMarkerUrl from '../assets/key-marker.svg';
+import userMarkerUrl from '../assets/user-marker.svg';
+import { addUserToilet, deleteUserToilet, getUserToilets, updateUserToilet } from '../services/userToiletService';
 import { getDirections } from '../services/directionsService';
 import type { DirectionsRoute } from '../services/directionsService';
 import type { User } from '../types/auth';
 import ToiletReviewModal from './ToiletReviewModal';
+import AuthSideGame from './AuthSideGame';
 
 const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY?.trim();
 const DEFAULT_POSITION = { lat: 37.566826, lng: 126.978657 };
@@ -53,10 +56,12 @@ type MapToilet = Position & {
   category?: string;
   openAllDay?: boolean;
   accessible?: boolean;
+  babyFacility?: boolean;
   requiresAccessKey?: boolean;
   requiresPassword?: boolean;
   accessNote?: string;
   dataSource: 'kakao' | 'osm' | 'seoul' | 'static';
+  isUserAdded?: boolean;
 };
 type RouteInfo = DirectionsRoute;
 type MapProps = { toilets: Toilet[]; query?: string; user: User | null; onLoginRequired: () => void };
@@ -69,12 +74,21 @@ const ACCESS_KEY_MARKER_IMAGE = {
     offset: { x: 20, y: 48 },
   },
 };
+const USER_MARKER_IMAGE = { src: userMarkerUrl, size: { width: 40, height: 48 }, options: { alt: '내가 추가한 화장실', offset: { x: 20, y: 48 } } };
 
 function formatDistance(distance?: string) {
   if (!distance) return undefined;
   const meters = Number(distance);
   if (Number.isNaN(meters)) return undefined;
   return meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`;
+}
+
+const GOING_COUNT_KEY = 'toilet-going-counts';
+function getPeopleGoing(toilet: MapToilet) {
+  try { const counts = JSON.parse(localStorage.getItem(GOING_COUNT_KEY) || '{}') as Record<string, number>; return Math.max(0, counts[toilet.id] || 0); } catch { return 0; }
+}
+function changePeopleGoing(toiletId: string, delta: number) {
+  try { const counts = JSON.parse(localStorage.getItem(GOING_COUNT_KEY) || '{}') as Record<string, number>; counts[toiletId] = Math.max(0, (counts[toiletId] || 0) + delta); localStorage.setItem(GOING_COUNT_KEY, JSON.stringify(counts)); } catch { /* local storage unavailable */ }
 }
 
 function toMapToilet(place: kakao.maps.services.PlacesSearchResultItem): MapToilet {
@@ -190,16 +204,23 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   const [isSelectingOrigin, setIsSelectingOrigin] = useState(false);
   const [isResultPanelOpen, setIsResultPanelOpen] = useState(true);
   const [showRestrictedOnly, setShowRestrictedOnly] = useState(false);
+  const [userToilets, setUserToilets] = useState<Toilet[]>([]);
+  const [isAddingToilet, setIsAddingToilet] = useState(false);
+  const [isGameOpen, setIsGameOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState('서울 중심의 화장실을 찾는 중입니다.');
   const searchSequence = useRef(0);
   const searchTimer = useRef<number | null>(null);
   const searchCache = useRef(new globalThis.Map<string, MapToilet[]>());
   const directionsTargetRef = useRef<MapToilet | null>(null);
+  const activeGoingToiletRef = useRef<string | null>(null);
   const directionsSequence = useRef(0);
   const viewportKeyRef = useRef('');
   const regionQuery = query.replace(/화장실/g, ' ').trim();
 
-  const fallbackToilets = useMemo<MapToilet[]>(() => toilets.map((toilet) => ({
+  useEffect(() => setUserToilets(getUserToilets(user?.id ?? null)), [user?.id]);
+  useEffect(() => { try { localStorage.setItem(GOING_COUNT_KEY, '{}'); } catch { /* local storage unavailable */ } }, []);
+
+  const fallbackToilets = useMemo<MapToilet[]>(() => [...toilets, ...userToilets].map((toilet) => ({
     id: `mock-${toilet.id}`,
     name: toilet.name,
     address: toilet.address,
@@ -211,13 +232,15 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     category: '공공 화장실',
     openAllDay: toilet.openAllDay,
     accessible: toilet.accessible,
+    babyFacility: toilet.babyFacility,
     requiresAccessKey: toilet.requiresAccessKey,
     requiresPassword: toilet.requiresPassword,
     accessNote: toilet.accessNote,
     dataSource: toilet.id.startsWith('seoul-eunpyeong-')
       ? 'seoul'
       : toilet.id.startsWith('osm-') ? 'osm' : 'static',
-  })), [currentPosition, toilets]);
+    isUserAdded: toilet.isUserAdded,
+  })), [currentPosition, toilets, userToilets]);
 
   const requestCurrentLocation = useCallback((
     onLocated?: (position: Position) => void,
@@ -475,11 +498,10 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     return [...nearbyToiletsInBounds, ...importedToilets];
   }, [fallbackToilets, hasCompletedSearch, nearbyToilets, viewportBounds]);
   const restrictedToiletCount = availableToilets.filter((toilet) => toilet.requiresAccessKey).length;
-  const visibleToilets = useMemo(() => (
-    showRestrictedOnly
-      ? availableToilets.filter((toilet) => toilet.requiresAccessKey)
-      : availableToilets
-  ), [availableToilets, showRestrictedOnly]);
+  const visibleToilets = useMemo(() => {
+    let filtered = showRestrictedOnly ? availableToilets.filter((toilet) => toilet.requiresAccessKey) : availableToilets;
+    return filtered;
+  }, [availableToilets, showRestrictedOnly]);
   const displayedToilets = directionsTarget ? [directionsTarget] : visibleToilets;
 
   if (loading) return <div className="map-feedback">카카오 지도를 불러오는 중입니다.</div>;
@@ -500,17 +522,21 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     return groups;
   })();
 
+  const selectToilet = (toilet: MapToilet) => {
+    setSelectedToiletId((current) => current === toilet.id ? null : toilet.id);
+  };
+
   const renderToiletMarker = (toilet: MapToilet) => (
     <MapMarker
       key={toilet.id}
       position={{ lat: toilet.lat, lng: toilet.lng }}
       image={toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
       title={`${toilet.requiresPassword ? '비밀번호 필요 · ' : toilet.requiresAccessKey ? '출입 확인 필요 · ' : ''}${toilet.name}`}
-      onClick={() => setSelectedToiletId((current) => directionsTarget ? toilet.id : current === toilet.id ? null : toilet.id)}
+      onClick={() => directionsTarget ? setSelectedToiletId(toilet.id) : selectToilet(toilet)}
     >
       {selectedToiletId === toilet.id && (
         <div className="map-place-info">
-          <strong>{toilet.name}</strong><span>{toilet.address}</span>
+          <strong>{toilet.name}</strong><span>{toilet.address}</span><span className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</span>
           <p className="map-place-description">{toilet.category || '화장실'}로 등록된 시설입니다. 운영시간과 현장 편의시설은 방문 전 확인해 주세요.</p>
           <div className="map-place-meta">
             {toilet.category && <span>{toilet.category}</span>}{toilet.distance && <em>{toilet.distance}</em>}
@@ -526,7 +552,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   );
 
   const focusToilet = (toilet: MapToilet) => {
-    setSelectedToiletId(toilet.id);
+    selectToilet(toilet);
     map?.panTo(new kakao.maps.LatLng(toilet.lat, toilet.lng));
   };
 
@@ -587,6 +613,11 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   };
 
   const startDirections = (toilet: MapToilet) => {
+    if (activeGoingToiletRef.current !== toilet.id) {
+      if (activeGoingToiletRef.current) changePeopleGoing(activeGoingToiletRef.current, -1);
+      changePeopleGoing(toilet.id, 1);
+      activeGoingToiletRef.current = toilet.id;
+    }
     setIsResultPanelOpen(true);
     searchSequence.current += 1;
     directionsTargetRef.current = toilet;
@@ -611,6 +642,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   };
 
   const stopDirections = () => {
+    if (activeGoingToiletRef.current) { changePeopleGoing(activeGoingToiletRef.current, -1); activeGoingToiletRef.current = null; }
     directionsSequence.current += 1;
     directionsTargetRef.current = null;
     setDirectionsTarget(null);
@@ -639,6 +671,20 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   };
 
   const selectOriginOnMap = (_: kakao.maps.Map, mouseEvent: kakao.maps.event.MouseEvent) => {
+    if (isAddingToilet) {
+      if (!user) { onLoginRequired(); setIsAddingToilet(false); return; }
+      const latitude = mouseEvent.latLng.getLat();
+      const longitude = mouseEvent.latLng.getLng();
+      const name = window.prompt('화장실 이름을 입력하세요.', '내가 추가한 화장실');
+      if (!name?.trim()) { setIsAddingToilet(false); return; }
+      const address = window.prompt('주소나 위치 설명을 입력하세요.', '지도에서 선택한 위치');
+      const added = addUserToilet(user.id, { name: name.trim(), address: address?.trim() || '지도에서 선택한 위치', distance: '', openAllDay: false, accessible: false, latitude, longitude });
+      setUserToilets(getUserToilets(user.id));
+      setSelectedToiletId(`mock-${added.id}`);
+      setIsAddingToilet(false);
+      setStatusMessage('초록색 마커로 화장실을 추가했습니다.');
+      return;
+    }
     if (!isSelectingOrigin || !directionsTarget) return;
 
     const selectedOrigin: Position = {
@@ -685,7 +731,8 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
             </>
           )}
         </div>
-        <div className="map-status-actions">
+        <div className={`map-status-actions${directionsTarget ? ' is-directions' : ''}`}>
+          {!directionsTarget && <button type="button" onClick={() => setIsGameOpen(true)}>똥 쌀 때 심심하지 않으세요?</button>}
           {directionsTarget ? (
             <>
               <button type="button" onClick={beginOriginSelection} disabled={isSelectingOrigin}>
@@ -697,8 +744,6 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
           ) : (
             <>
               <button type="button" onClick={() => void searchMapBounds()}>이 지역 다시 검색</button>
-              <button type="button" onClick={focusSeoul}>서울 중심</button>
-              <button type="button" onClick={() => requestCurrentLocation()}>현재 위치</button>
               <button type="button" onClick={toggleSkyview}>{isSkyview ? '일반지도' : '위성뷰'}</button>
             </>
           )}
@@ -712,7 +757,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
           </button>
         </div>
       </div>
-      <section className={`kakao-map-wrap${isSelectingOrigin ? ' is-selecting-origin' : ''}`} aria-label="현재 지도 영역의 화장실 지도">
+      <section className={`kakao-map-wrap${isSelectingOrigin ? ' is-selecting-origin' : ''}${isAddingToilet ? ' is-adding-toilet' : ''}`} aria-label="현재 지도 영역의 화장실 지도">
         <div className="map-content">
           <KakaoMap
             center={center}
@@ -743,14 +788,14 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                 <MapMarker
                   key={toilet.id}
                   position={{ lat: toilet.lat, lng: toilet.lng }}
-                  image={toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
+                  image={toilet.isUserAdded ? USER_MARKER_IMAGE : toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
                   title={`${toilet.requiresPassword ? '비밀번호 필요 · ' : toilet.requiresAccessKey ? '출입 확인 필요 · ' : ''}${toilet.name}`}
                   onClick={() => setSelectedToiletId((current) => directionsTarget ? toilet.id : current === toilet.id ? null : toilet.id)}
                 >
                   {selectedToiletId === toilet.id && (
                     <div className="map-place-info">
                       <strong>{toilet.name}</strong>
-                      <span>{toilet.address}</span>
+                      <span>{toilet.address}</span><span className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</span>
                       <p className="map-place-description">
                         {toilet.category || '화장실'}로 등록된 시설입니다. 운영시간과 현장 편의시설은 방문 전 전화 또는 현장 안내로 확인해 주세요.
                       </p>
@@ -769,7 +814,8 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                       {toilet.phone && <a href={`tel:${toilet.phone}`}>{toilet.phone}</a>}
                       {!directionsTarget && (
                         <div className="map-place-actions">
-                          <button type="button" className="map-review-button" onClick={(event) => { event.stopPropagation(); setReviewTarget(toilet); }}>별점·청결도 리뷰</button>
+                          {toilet.isUserAdded && <><button type="button" className="map-edit-button" onClick={(event) => { event.stopPropagation(); if (!user) return; const name = window.prompt('화장실 이름을 수정하세요.', toilet.name); if (!name?.trim()) return; const address = window.prompt('주소나 위치 설명을 수정하세요.', toilet.address); updateUserToilet(user.id, { id: toilet.id, name: name.trim(), address: address?.trim() || toilet.address, distance: toilet.distance || '', openAllDay: toilet.openAllDay ?? false, accessible: toilet.accessible ?? false, latitude: toilet.lat, longitude: toilet.lng, isUserAdded: true }); setUserToilets(getUserToilets(user.id)); }}>수정</button><button type="button" className="map-delete-button" onClick={(event) => { event.stopPropagation(); if (user && window.confirm('이 화장실을 삭제할까요?')) { deleteUserToilet(user.id, toilet.id.replace(/^mock-/, '')); setUserToilets(getUserToilets(user.id)); setSelectedToiletId(null); } }}>삭제</button></>}
+                          {!toilet.isUserAdded && <button type="button" className="map-review-button" onClick={(event) => { event.stopPropagation(); setReviewTarget(toilet); }}>별점·청결도 리뷰</button>}
                           <button type="button" className="map-direction-button" onClick={(event) => { event.stopPropagation(); startDirections(toilet); }}>길찾기 시작</button>
                         </div>
                       )}
@@ -802,6 +848,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
             </div>
           )}
 
+          {!directionsTarget && <><button type="button" className="map-current-location-button" aria-label="현재 위치로 이동" onClick={() => requestCurrentLocation()}>⌖</button><button type="button" className="map-add-toilet-button" aria-label="화장실 추가" onClick={() => { if (!user) { onLoginRequired(); return; } setIsAddingToilet((active) => !active); setStatusMessage(isAddingToilet ? '화장실 추가를 취소했습니다.' : '지도를 클릭해 화장실 위치를 선택하세요.'); }}>+</button></>}
           {isResultPanelOpen && (
             <aside id="map-result-panel" className="map-result-panel" aria-label="화장실 위치 목록">
             <div className="map-result-heading">
@@ -859,6 +906,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                       <span className="map-result-copy">
                         <strong>{toilet.name}</strong>
                         <span>{toilet.address}</span>
+                        <small className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</small>
                         <small>{getDataConfidenceLabel(toilet)}</small>
                       </span>
                       {toilet.distance && <em>{toilet.distance}</em>}
@@ -872,6 +920,12 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
         </div>
       </section>
       {reviewTarget && <ToiletReviewModal toilet={reviewTarget} user={user} onClose={() => setReviewTarget(null)} onLogin={onLoginRequired} />}
+      {isGameOpen && (
+        <div className="map-game-modal" role="dialog" aria-modal="true" aria-label="똥 피하기 게임">
+          <button type="button" className="map-game-close" onClick={() => setIsGameOpen(false)} aria-label="게임 닫기">×</button>
+          <AuthSideGame onExit={() => setIsGameOpen(false)} />
+        </div>
+      )}
     </>
   );
 }

@@ -1272,3 +1272,8 @@
     white-space: nowrap;
   }
 }
+.map-game-modal{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:24px;background:#17202acc;backdrop-filter:blur(4px)}
+.map-game-modal .auth-side-game{width:min(92vw,420px);height:min(82vh,680px);flex:none;border:0;border-radius:22px;box-shadow:0 24px 80px #0006;overflow:hidden}
+.map-game-close{position:absolute;top:18px;right:22px;width:42px;height:42px;border:0;border-radius:50%;background:#fff;color:#17202a;font-size:28px;line-height:1;cursor:pointer;z-index:1}
+.map-going-now{display:block!important;color:#2f9e62!important;font-size:11px!important;font-weight:700}
+.map-status-actions:not(.is-directions)>button:nth-child(2){display:none}

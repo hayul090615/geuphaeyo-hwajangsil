@@ -18,4 +18,6 @@ export type Toilet = {
   verifiedAt?: string;
   note?: string;
   status?: 'pending' | 'approved';
+  /** 사용자가 직접 추가한 개인 전용 화장실 데이터 */
+  isUserAdded?: boolean;
 };

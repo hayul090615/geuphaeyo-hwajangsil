@@ -100,4 +100,8 @@ export async function signInWithGoogleCredential(credential: string): Promise<Us
   return saveAuthResponse(result);
 }
 
-export function signOut() { localStorage.removeItem(SESSION_KEY); }
+export function signOut() {
+  localStorage.removeItem(SESSION_KEY);
+  const googleApi = (window as unknown as { google?: { accounts?: { id?: { disableAutoSelect?: () => void } } } }).google;
+  googleApi?.accounts?.id?.disableAutoSelect?.();
+}

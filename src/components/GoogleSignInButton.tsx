@@ -13,8 +13,9 @@ type GoogleCredentialResponse = {
 
 type GoogleIdentityApi = {
   accounts: {
-    id: {
-      initialize: (options: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void;
+      id: {
+        initialize: (options: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void;
+      prompt: () => void;
       renderButton: (element: HTMLElement, options: Record<string, string | number>) => void;
     };
   };
@@ -79,20 +80,9 @@ export default function GoogleSignInButton({ onCredential, onError }: GoogleSign
     void loadGoogleIdentityScript()
       .then(() => {
         if (!isActive || !containerRef.current || !window.google) return;
-        containerRef.current.replaceChildren();
         window.google.accounts.id.initialize({
           client_id: clientId,
           callback: (response) => onCredential(response.credential),
-        });
-        window.google.accounts.id.renderButton(containerRef.current, {
-          type: "standard",
-          theme: "outline",
-          size: "large",
-          text: "continue_with",
-          shape: "rectangular",
-          logo_alignment: "left",
-          locale: "ko",
-          width: Math.min(containerRef.current.clientWidth || 320, 400),
         });
         setIsLoading(false);
       })
@@ -140,7 +130,9 @@ export default function GoogleSignInButton({ onCredential, onError }: GoogleSign
   return (
     <div className="google-auth-wrap">
       {isLoading && <span className="google-auth-loading">Google 로그인 준비 중...</span>}
-      <div ref={containerRef} className="google-auth-button" />
+      <div ref={containerRef} className="google-auth-button">
+        <button type="button" className="google-auth-generic-button" disabled={isLoading} onClick={() => window.google?.accounts.id.prompt()}>G&nbsp;&nbsp;Google로 로그인</button>
+      </div>
     </div>
   );
 }

@@ -160,11 +160,12 @@ export default function Service({ user, onBack, onLogout }: ServiceProps) {
             {user.profileImage && <img src={user.profileImage} alt="" referrerPolicy="no-referrer" />}
             <span><strong>{user.name}{user.role === 'admin' && <em className="admin-role-badge">관리자</em>}</strong><small>{user.email}</small></span>
           </div>
-          <NotificationBell />
+          
           <button className="service-back-button" type="button" onClick={onBack}>← 지도로 돌아가기</button>
           <button className="service-logout-button" type="button" onClick={() => setModal('logout')}>로그아웃</button>
         </nav>
       </header>
+      <div className="service-page-notification"><NotificationBell /></div>
 
       <main className="service-page-main">
         <section className="service-hero">

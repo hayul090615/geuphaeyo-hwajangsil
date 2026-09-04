@@ -1010,3 +1010,19 @@
   .admin-feedback { margin-top:28px; padding:22px 18px; }
   .admin-feedback-meta { flex-direction:column; gap:4px; }
 }
+
+.service-page-notification {
+  width: min(1360px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 10px 42px 0;
+  display: flex;
+  justify-content: flex-end;
+  background: #fff;
+}
+
+@media (max-width: 560px) {
+  .service-page-notification {
+    width: 100%;
+    padding: 10px 18px 0;
+  }
+}

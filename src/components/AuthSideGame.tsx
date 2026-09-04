@@ -1,17 +1,18 @@
 import { Fragment, useEffect, useRef, useState, type PointerEvent } from 'react';
 import rainbowPoopUrl from '../assets/rainbow-poop.png';
 
-type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; size: 'normal' | 'giant' };
+type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; size: 'normal' | 'giant' | 'cluster'; scale: number };
 const PLAYER_SPEED_PERCENT_PER_SECOND = 28;
 const MAX_STAGE = 5;
 const GIANT_POOP_CHANCE = 0.16;
+const CLUSTER_POOP_CHANCE = 0.2;
+const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
 const PLAYER_MIN_X = 8;
 const PLAYER_MAX_X = 92;
 const POOP_LINE_Y = 90;
 const PLAYER_HIT_Y_MIN = 88;
 const PLAYER_HIT_Y_MAX = 98;
 const ITEM_HIT_X_RADIUS = 6;
-const POOP_LINE_HIT_X_RADIUS = 9;
 const STAGE_ITEM_COUNTS = [
   { poop: 7, coin: 6 },
   { poop: 8, coin: 5 },
@@ -19,37 +20,70 @@ const STAGE_ITEM_COUNTS = [
   { poop: 10, coin: 3 },
   { poop: 11, coin: 2 },
 ] as const;
-const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = 'normal'): GameItem => ({
+const getLargePoopScale = (stage: number) => stage === 2 ? 2 : stage === 3 ? 2.5 : 3;
+const getEndlessLevel = (score: number) => score < MAX_STAGE * 10 ? 0 : Math.floor((score - MAX_STAGE * 10) / 10) + 1;
+const readHighScore = () => {
+  try {
+    return Number(window.localStorage.getItem(HIGH_SCORE_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+};
+const saveHighScore = (score: number) => {
+  try {
+    window.localStorage.setItem(HIGH_SCORE_KEY, String(score));
+  } catch {
+    // localStorage may be unavailable in private browsing contexts.
+  }
+};
+const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = 'normal', scale = 1): GameItem => ({
   id,
   type,
   size,
+  scale,
   x: 10 + Math.random() * 80,
   y: -10 - Math.random() * 70,
   speed: 0.009 + Math.random() * 0.004,
 });
-const createStageItems = (stage: number) => {
+const createStageItems = (stage: number, endlessLevel = 0) => {
   const counts = STAGE_ITEM_COUNTS[stage - 1];
   const types: GameItem['type'][] = [
-    ...Array.from({ length: counts.poop }, () => 'poop' as const),
+    ...Array.from({ length: counts.poop + (stage === MAX_STAGE ? endlessLevel : 0) }, () => 'poop' as const),
     ...Array.from({ length: counts.coin }, () => 'coin' as const),
   ];
-  return types.sort(() => Math.random() - 0.5).map((type, id) => makeItem(id, type));
+  const items = types.sort(() => Math.random() - 0.5).map((type, id) => makeItem(id, type));
+  const poopItems = items.filter((item) => item.type === 'poop');
+  if (stage >= 2 && stage <= 4 && poopItems.length > 0) {
+    const target = poopItems[Math.floor(Math.random() * poopItems.length)];
+    return items.map((item) => item.id === target.id ? makeItem(item.id, 'poop', 'giant', getLargePoopScale(stage)) : item);
+  }
+  if (stage === MAX_STAGE && poopItems.length > 0) {
+    const target = poopItems[Math.floor(Math.random() * poopItems.length)];
+    return items.map((item) => item.id === target.id ? makeItem(item.id, 'poop', 'cluster', 1.15) : item);
+  }
+  return items;
 };
 type AuthSideGameProps = { onExit?: () => void };
 
 export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const [items, setItems] = useState<GameItem[]>(() => createStageItems(1));
   const [score, setScore] = useState(0);
+  const [highScore, setHighScore] = useState(readHighScore);
   const [stage, setStage] = useState(1);
+  const [endlessLevel, setEndlessLevel] = useState(0);
   const [playerX, setPlayerX] = useState(50);
   const [coinEffect, setCoinEffect] = useState(false);
+  const [barrierVisible, setBarrierVisible] = useState(true);
   const [fireEffect, setFireEffect] = useState<{ id: number; x: number } | null>(null);
   const [gameOver, setGameOver] = useState(false);
   const playerXRef = useRef(50);
   const directionRef = useRef<-1 | 0 | 1>(0);
   const scoreRef = useRef(0);
+  const highScoreRef = useRef(highScore);
   const stageRef = useRef(1);
+  const endlessLevelRef = useRef(0);
   const itemsRef = useRef<GameItem[]>([]);
+  const barrierVisibleRef = useRef(true);
   const nextId = useRef(20);
   const pointerStartRef = useRef<{ id: number; x: number; playerX: number } | null>(null);
   itemsRef.current = items;
@@ -116,10 +150,15 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     let frame = 0;
     let previousTime: number | null = null;
     const createRespawnItem = (item: GameItem, currentItems: GameItem[]) => {
-      const shouldSpawnGiant = stageRef.current === MAX_STAGE && item.type === 'poop'
+      const shouldSpawnGiant = stageRef.current >= 2 && stageRef.current < MAX_STAGE && item.type === 'poop'
         && !currentItems.some((currentItem) => currentItem.size === 'giant')
         && Math.random() < GIANT_POOP_CHANCE;
-      return makeItem(nextId.current++, item.type, shouldSpawnGiant ? 'giant' : 'normal');
+      const shouldSpawnCluster = stageRef.current === MAX_STAGE && item.type === 'poop'
+        && !currentItems.some((currentItem) => currentItem.size === 'cluster')
+        && Math.random() < CLUSTER_POOP_CHANCE;
+      if (shouldSpawnGiant) return makeItem(nextId.current++, item.type, 'giant', getLargePoopScale(stageRef.current));
+      if (shouldSpawnCluster) return makeItem(nextId.current++, item.type, 'cluster', 1.15);
+      return makeItem(nextId.current++, item.type);
     };
     const tick = (time: number) => {
       const elapsedSeconds = previousTime === null ? 0 : Math.min((time - previousTime) / 1000, 0.05);
@@ -131,12 +170,13 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       let collectedCoins = 0;
       const nextItems = currentItems.map((item) => {
         const nextY = item.y + item.speed * 16;
-        const touchesPoopLine = item.type === 'poop'
+        const touchesPoopLine = barrierVisibleRef.current
           && item.y < POOP_LINE_Y
-          && nextY >= POOP_LINE_Y
-          && Math.abs(item.x - playerXRef.current) < POOP_LINE_HIT_X_RADIUS;
+          && nextY >= POOP_LINE_Y;
         const nearPlayer = nextY > PLAYER_HIT_Y_MIN && nextY < PLAYER_HIT_Y_MAX && Math.abs(item.x - playerXRef.current) < ITEM_HIT_X_RADIUS;
         if (touchesPoopLine) {
+          barrierVisibleRef.current = false;
+          setBarrierVisible(false);
           setFireEffect({ id: item.id, x: item.x });
           window.setTimeout(() => setFireEffect((current) => current?.id === item.id ? null : current), 320);
           return createRespawnItem(item, currentItems);
@@ -154,13 +194,22 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         return nextY > 108 ? createRespawnItem(item, currentItems) : { ...item, y: nextY };
       });
       if (collectedCoins > 0) {
-        scoreRef.current += collectedCoins;
-        setScore(scoreRef.current);
-        const nextStage = Math.min(MAX_STAGE, Math.floor(scoreRef.current / 10) + 1);
-        if (nextStage > stageRef.current) {
+        const nextScore = scoreRef.current + collectedCoins;
+        scoreRef.current = nextScore;
+        setScore(nextScore);
+        if (nextScore > highScoreRef.current) {
+          highScoreRef.current = nextScore;
+          setHighScore(nextScore);
+          saveHighScore(nextScore);
+        }
+        const nextStage = Math.min(MAX_STAGE, Math.floor(nextScore / 10) + 1);
+        const nextEndlessLevel = getEndlessLevel(nextScore);
+        if (nextStage > stageRef.current || nextEndlessLevel > endlessLevelRef.current) {
           stageRef.current = nextStage;
           setStage(nextStage);
-          const stageItems = createStageItems(nextStage);
+          endlessLevelRef.current = nextEndlessLevel;
+          setEndlessLevel(nextEndlessLevel);
+          const stageItems = createStageItems(nextStage, nextEndlessLevel);
           itemsRef.current = stageItems;
           setItems(stageItems);
         } else {
@@ -180,6 +229,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const restart = () => {
     directionRef.current = 0;
     scoreRef.current = 0;
+    endlessLevelRef.current = 0;
+    barrierVisibleRef.current = true;
     stageRef.current = 1;
     playerXRef.current = 50;
     setPlayerX(50);
@@ -187,6 +238,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     itemsRef.current = stageItems;
     setItems(stageItems);
     setScore(0);
+    setEndlessLevel(0);
+    setBarrierVisible(true);
     setStage(1);
     setGameOver(false);
     setCoinEffect(false);
@@ -195,13 +248,14 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
 
   return <div className={`auth-side-game stage-${stage}`} aria-label="Poop dodge coin game" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerEnd} onPointerCancel={handlePointerEnd} onPointerLeave={handlePointerEnd}>
     <div className={`auth-game-score${coinEffect ? ' is-coin-pop' : ''}`}><span className="auth-coin-icon" aria-hidden="true" /> {score}</div>
-    <div className="auth-game-stage">STAGE {stage} / {MAX_STAGE}</div>
+    <div className="auth-game-best">최고기록 {highScore}</div>
+    <div className="auth-game-stage">{endlessLevel > 0 ? `STAGE ${MAX_STAGE}+${endlessLevel}` : `STAGE ${stage} / ${MAX_STAGE}`}</div>
     {items.map((item) => <Fragment key={item.id}>
       <div className="auth-game-item" style={{ left: `${item.x}%`, top: `${item.y}%` }}>
-        {item.type === 'coin' ? <span className="auth-falling-item coin"><span className="auth-coin-icon" aria-hidden="true" /></span> : <img className={`auth-falling-item poop${item.size === 'giant' ? ' giant' : ''}`} src={rainbowPoopUrl} alt="" />}
+        {item.type === 'coin' ? <span className="auth-falling-item coin"><span className="auth-coin-icon" aria-hidden="true" /></span> : item.size === 'cluster' ? <span className="auth-falling-item poop cluster" aria-hidden="true"><img src={rainbowPoopUrl} alt="" /><img src={rainbowPoopUrl} alt="" /><img src={rainbowPoopUrl} alt="" /></span> : <img className={`auth-falling-item poop${item.size === 'giant' ? ' giant' : ''}`} style={item.size === 'giant' ? { width: `${32 * item.scale}px`, height: `${32 * item.scale}px` } : undefined} src={rainbowPoopUrl} alt="" />}
       </div>
     </Fragment>)}
-    <div className={`auth-poop-line${fireEffect ? ' is-burning' : ''}`} style={{ left: `${playerX}%` }} aria-hidden="true" />
+    {barrierVisible && <div className="auth-poop-line" aria-hidden="true" />}
     {fireEffect && <span className="auth-poop-fire" style={{ left: `${fireEffect.x}%` }} aria-hidden="true">🔥</span>}
     <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="Player">🚽</div>
     {gameOver && <div className="auth-game-over" role="dialog" aria-modal="true" aria-label="게임 종료"><strong>똥에 맞았어요!</strong><span>점수: {score}</span><div><button type="button" onClick={restart}>다시하기</button><button type="button" onClick={onExit}>종료하기</button></div></div>}

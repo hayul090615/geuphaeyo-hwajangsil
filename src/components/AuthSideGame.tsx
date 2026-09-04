@@ -9,7 +9,7 @@ const CLUSTER_POOP_CHANCE = 0.2;
 const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
 const PLAYER_MIN_X = 8;
 const PLAYER_MAX_X = 92;
-const POOP_LINE_Y = 90;
+const POOP_LINE_Y = 14;
 const PLAYER_HIT_Y_MIN = 88;
 const PLAYER_HIT_Y_MAX = 98;
 const ITEM_HIT_X_RADIUS = 6;
@@ -42,7 +42,7 @@ const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = '
   size,
   scale,
   x: 10 + Math.random() * 80,
-  y: -10 - Math.random() * 70,
+  y: 16 + Math.random() * 26,
   speed: 0.009 + Math.random() * 0.004,
 });
 const createStageItems = (stage: number, endlessLevel = 0) => {
@@ -71,6 +71,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const [highScore, setHighScore] = useState(readHighScore);
   const [stage, setStage] = useState(1);
   const [endlessLevel, setEndlessLevel] = useState(0);
+  const [lives, setLives] = useState(3);
   const [playerX, setPlayerX] = useState(50);
   const [coinEffect, setCoinEffect] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -82,6 +83,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const highScoreRef = useRef(highScore);
   const stageRef = useRef(1);
   const endlessLevelRef = useRef(0);
+  const livesRef = useRef(3);
+  const invulnerableUntilRef = useRef(0);
   const itemsRef = useRef<GameItem[]>([]);
   const nextId = useRef(20);
   const pointerStartRef = useRef<{ id: number; x: number; playerX: number } | null>(null);
@@ -179,8 +182,14 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
             window.setTimeout(() => setCoinEffect(false), 350);
             return createRespawnItem(item, currentItems);
           }
-          setGameOver(true);
-          return item;
+          if (time >= invulnerableUntilRef.current) {
+            const nextLives = livesRef.current - 1;
+            livesRef.current = nextLives;
+            setLives(nextLives);
+            invulnerableUntilRef.current = time + 900;
+            if (nextLives <= 0) setGameOver(true);
+          }
+          return createRespawnItem(item, currentItems);
         }
         const touchesPoopLine = item.y < POOP_LINE_Y && nextY >= POOP_LINE_Y;
         if (touchesPoopLine) {
@@ -227,6 +236,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     directionRef.current = 0;
     scoreRef.current = 0;
     endlessLevelRef.current = 0;
+    livesRef.current = 3;
+    invulnerableUntilRef.current = 0;
     stageRef.current = 1;
     playerXRef.current = 50;
     setPlayerX(50);
@@ -234,6 +245,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     itemsRef.current = stageItems;
     setItems(stageItems);
     setScore(0);
+    setLives(3);
     setEndlessLevel(0);
     setStage(1);
     setPaused(false);
@@ -249,7 +261,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   };
 
   return <div className={`auth-side-game stage-${stage}`} aria-label="Poop dodge coin game" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerEnd} onPointerCancel={handlePointerEnd} onPointerLeave={handlePointerEnd}>
-    <button className="auth-game-pause" type="button" aria-label={paused ? '게임 재개' : '게임 일시정지'} onPointerDown={(event) => event.stopPropagation()} onClick={togglePause}>{paused ? '▶' : '||'}</button>
+    <button className="auth-game-pause" type="button" aria-label={paused ? '게임 재개' : '게임 일시정지'} onPointerDown={(event) => event.stopPropagation()} onClick={togglePause}>{paused ? '▶️' : '⏸️'}</button>
+    <div className="auth-game-lives" aria-label={`생명 ${lives}개`}>❤️ × {lives}</div>
     <div className={`auth-game-score${coinEffect ? ' is-coin-pop' : ''}`}><span className="auth-coin-icon" aria-hidden="true" /> {score}</div>
     <div className="auth-game-best">최고기록 {highScore}</div>
     <div className="auth-game-stage">{endlessLevel > 0 ? `STAGE ${MAX_STAGE}+${endlessLevel}` : `STAGE ${stage} / ${MAX_STAGE}`}</div>

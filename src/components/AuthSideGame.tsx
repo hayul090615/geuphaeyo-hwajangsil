@@ -1,7 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 
 type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; trail: number[] };
-const makeItem = (id: number, type: GameItem['type']): GameItem => ({ id, type, x: 10 + Math.random() * 80, y: -10 - Math.random() * 70, speed: 0.009 + Math.random() * 0.004, trail: [] });
+const makeItem = (id: number, type: GameItem['type']): GameItem => ({
+  id,
+  type,
+  x: 10 + Math.random() * 80,
+  y: -10 - Math.random() * 70,
+  speed: 0.009 + Math.random() * 0.004,
+  trail: [],
+});
 const initialItems = () => Array.from({ length: 8 }, (_, id) => makeItem(id, id % 3 === 0 ? 'poop' : 'coin'));
 type AuthSideGameProps = { onExit?: () => void };
 
@@ -12,20 +19,54 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const [coinEffect, setCoinEffect] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const playerXRef = useRef(50);
+  const directionRef = useRef<-1 | 0 | 1>(0);
   const nextId = useRef(20);
+
+  const setPointerDirection = (event: PointerEvent<HTMLDivElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    directionRef.current = event.clientX < bounds.left + bounds.width / 2 ? -1 : 1;
+  };
+  const stopPointerDirection = () => { directionRef.current = 0; };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      directionRef.current = event.key === 'ArrowLeft' ? -1 : 1;
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') directionRef.current = 0;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', stopPointerDirection);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', stopPointerDirection);
+    };
+  }, []);
+
   useEffect(() => {
     if (gameOver) return undefined;
     let frame = 0;
-    const tick = (time: number) => {
-      const nextPlayerX = 50 + Math.sin(time / 2100) * 34;
-      playerXRef.current = nextPlayerX; setPlayerX(nextPlayerX);
+    const tick = () => {
+      const nextPlayerX = Math.max(8, Math.min(92, playerXRef.current + directionRef.current * 0.8));
+      playerXRef.current = nextPlayerX;
+      setPlayerX(nextPlayerX);
       setItems((current) => current.map((item) => {
         const nextY = item.y + item.speed * 16;
         const trail = item.type === 'poop' ? [item.y, ...item.trail].slice(0, 5) : [];
         const nearPlayer = nextY > 82 && nextY < 101 && Math.abs(item.x - playerXRef.current) < 11;
         if (nearPlayer) {
-          if (item.type === 'coin') { setScore((value) => value + 1); setCoinEffect(true); window.setTimeout(() => setCoinEffect(false), 350); return makeItem(nextId.current++, 'coin'); }
-          setGameOver(true); return item;
+          if (item.type === 'coin') {
+            setScore((value) => value + 1);
+            setCoinEffect(true);
+            window.setTimeout(() => setCoinEffect(false), 350);
+            return makeItem(nextId.current++, 'coin');
+          }
+          setGameOver(true);
+          return item;
         }
         return nextY > 108 ? makeItem(nextId.current++, item.type) : { ...item, y: nextY, trail };
       }));
@@ -34,11 +75,24 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     frame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frame);
   }, [gameOver]);
-  const restart = () => { setItems(initialItems()); setScore(0); setGameOver(false); setCoinEffect(false); };
-  return <div className="auth-side-game" aria-label="똥 피하기 코인 게임">
+
+  const restart = () => {
+    directionRef.current = 0;
+    playerXRef.current = 50;
+    setPlayerX(50);
+    setItems(initialItems());
+    setScore(0);
+    setGameOver(false);
+    setCoinEffect(false);
+  };
+
+  return <div className="auth-side-game" aria-label="Poop dodge coin game" onPointerDown={setPointerDirection} onPointerMove={(event) => { if (event.buttons > 0) setPointerDirection(event); }} onPointerUp={stopPointerDirection} onPointerCancel={stopPointerDirection} onPointerLeave={stopPointerDirection}>
     <div className={`auth-game-score${coinEffect ? ' is-coin-pop' : ''}`}>🪙 {score}</div>
-    {items.map((item) => <div key={item.id} className="auth-game-item" style={{ left: `${item.x}%`, top: `${item.y}%` }}>{item.type === 'poop' && item.trail.map((y, index) => <span key={`${item.id}-trail-${index}`} className="auth-poop-trail" style={{ top: `${y - item.y}%`, opacity: 0.32 - index * 0.055 }}>💩</span>)}<span className={`auth-falling-item ${item.type}`}>{item.type === 'coin' ? '🪙' : '💩'}</span></div>)}
-    <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="사람 캐릭터">🧍</div>
-    {gameOver && <div className="auth-game-over" role="dialog" aria-modal="true" aria-label="게임 종료"><strong>똥을 맞았어요!</strong><span>획득 코인: {score}</span><div><button type="button" onClick={restart}>다시하기</button><button type="button" onClick={onExit}>종료하기</button></div></div>}
+    {items.map((item) => <div key={item.id} className="auth-game-item" style={{ left: `${item.x}%`, top: `${item.y}%` }}>
+      {item.type === 'poop' && item.trail.map((y, index) => <span key={`${item.id}-trail-${index}`} className="auth-poop-trail" style={{ top: `${y - item.y}%`, opacity: 0.32 - index * 0.055 }}>💩</span>)}
+      <span className={`auth-falling-item ${item.type}`}>{item.type === 'coin' ? '🪙' : '💩'}</span>
+    </div>)}
+    <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="Player">🚽</div>
+    {gameOver && <div className="auth-game-over" role="dialog" aria-modal="true" aria-label="Game over"><strong>You got hit!</strong><span>Score: {score}</span><div><button type="button" onClick={restart}>Restart</button><button type="button" onClick={onExit}>Exit</button></div></div>}
   </div>;
 }

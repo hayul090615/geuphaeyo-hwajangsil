@@ -1,6 +1,6 @@
 # 니똥칼라똥 — Service Frontend & Backend
 
-사용자의 현재 위치를 기준으로 주변 화장실을 검색하고, 위치 정보와 도보 경로를 제공하는 지도 기반 웹 서비스입니다.
+사용자의 현재 위치를 기준으로 주변 화장실을 검색하고, 위치 정보와 도보·자전거·자동차 경로를 제공하는 지도 기반 웹 서비스입니다.
 
 - 서비스 주소: https://yourpooprainbow.vercel.app
 - 작업 브랜치: `feature/service-frontend-backend`
@@ -12,11 +12,13 @@
 - 브라우저 GPS를 이용한 현재 위치 표시
 - 현재 지도 영역 재검색 및 지역명 검색
 - 화장실 목록·마커·상세 팝업 연동
-- 선택한 화장실까지 도보 경로, 거리, 예상 시간 표시
+- 선택한 화장실까지 도보·자전거·자동차 경로, 거리, 예상 시간 표시
+- 이동수단 선택에 따른 경로 재계산 및 경로 안내 메시지
 - 지도에서 실제 출발 위치 직접 조정
 - 로그인·회원가입·Google 로그인 UI
 - 화장실 제보 및 서비스 요청사항 입력
 - 반응형 UI, 다크 모드, 일반지도·위성뷰 지원
+- 코인·똥 피하기 미니게임: 5단계 성장, 단계별 난이도, 3목숨, 최고기록, 일시정지
 
 ## 사용 기술
 
@@ -26,7 +28,7 @@
 | Map | Kakao Map SDK, react-kakao-maps-sdk |
 | Backend | Node.js, Express, TypeScript |
 | Database | PostgreSQL, pg |
-| Directions | Vercel Function, OSM/OSRM 기반 도보 경로 |
+| Directions | Vercel Function, OSM/OSRM 기반 도보·자전거 경로, Kakao Mobility 자동차 경로 |
 | Deployment | Vercel |
 | Collaboration | Git, GitHub |
 
@@ -48,7 +50,8 @@
 
 /api/directions (Vercel Function)
 └─ backend/src/services/directions-service.ts
-   └─ 도보 경로 데이터 반환
+   ├─ 도보·자전거: OSM/OSRM 경로 데이터 반환
+   └─ 자동차: Kakao Mobility 경로 데이터 반환
 
 Express REST API
 └─ /toilets CRUD
@@ -57,12 +60,24 @@ Express REST API
 
 프론트엔드는 PostgreSQL에 직접 접근하지 않습니다. 실제 데이터 연결은 `src/services`에서 Express API를 호출하는 방식으로 진행합니다.
 
+## 미니게임 규칙
+
+지도 화면에서 실행할 수 있는 코인·똥 피하기 게임입니다.
+
+- 코인 10개를 모을 때마다 다음 단계로 성장합니다.
+- 똥 개수는 1단계 5개, 2단계 6개, 3단계 7개, 4단계 8개, 5단계 10개입니다.
+- 2단계부터 단계별로 2배·2.5배·3배 크기의 똥이 하나씩 랜덤 등장합니다.
+- 5단계에서는 똥 3개가 붙은 특수 똥이 등장하고, 이후에는 `STAGE 5+` 무한 난이도로 똥이 계속 증가합니다.
+- 생명은 3개이며 똥에 맞아도 생명만 줄고 즉시 게임을 계속합니다.
+- 최고기록은 브라우저 `localStorage`에 저장되며, `⏸️` 버튼으로 게임을 일시정지할 수 있습니다.
+- 위쪽 출발선에서 아이템이 생성되고, 하단 안전선에 닿은 놓친 아이템은 불꽃 효과와 함께 제거됩니다.
+
 ## 프로젝트 파일 구조
 
 ```text
 .
 ├─ api/
-│  └─ directions.ts                  # Vercel 도보 길찾기 함수
+│  └─ directions.ts                  # Vercel 이동수단별 길찾기 함수
 ├─ backend/
 │  ├─ src/
 │  │  ├─ config/env.ts               # 백엔드 환경변수
@@ -81,7 +96,8 @@ Express REST API
 ├─ src/
 │  ├─ components/
 │  │  ├─ Header.tsx
-│  │  ├─ Map.tsx                     # 지도 검색·마커·도보 길찾기
+│  │  ├─ Map.tsx                     # 지도 검색·마커·이동수단별 길찾기
+│  │  ├─ AuthSideGame.tsx            # 코인·똥 피하기 미니게임
 │  │  ├─ SearchBar.tsx
 │  │  ├─ ToiletCard.tsx
 │  │  ├─ ToiletLocationMap.tsx
@@ -96,7 +112,7 @@ Express REST API
 │  │  └─ Service.tsx                 # 고객센터·추천·제보
 │  ├─ services/
 │  │  ├─ authService.ts              # 현재 로컬 인증 처리
-│  │  ├─ directionsService.ts        # 도보 경로 API 호출
+│  │  ├─ directionsService.ts        # 이동수단별 경로 API 호출
 │  │  ├─ locationService.ts          # 좌표 거리 계산
 │  │  └─ toiletService.ts            # mock 및 압축 정적 화장실 데이터
 │  ├─ styles/
@@ -165,9 +181,17 @@ PostgreSQL에는 계단 수, 비밀번호 필요 여부, 남녀 화장실 수, �
 | `PATCH` | `/toilets/:id` | 화장실 수정 |
 | `DELETE` | `/toilets/:id` | 화장실 삭제 |
 
-### 도보 길찾기 API
+### 길찾기 API
 
 `POST /api/directions`
+
+`mode`에 따라 다음 경로 서비스를 사용합니다.
+
+| `mode` | 이동수단 | 경로 서비스 |
+| --- | --- | --- |
+| `walk` | 도보 | OSM/OSRM 보행 경로 |
+| `bicycle` | 자전거 | OSM/OSRM 자전거 경로 |
+| `car` | 자동차 | Kakao Mobility 자동차 경로 |
 
 ```json
 {
@@ -181,7 +205,7 @@ PostgreSQL에는 계단 수, 비밀번호 필요 여부, 남녀 화장실 수, �
 }
 ```
 
-응답에는 도보 거리, 예상 시간, 지도에 표시할 경로 좌표가 포함됩니다.
+응답에는 선택한 이동수단의 거리, 예상 시간, 지도에 표시할 경로 좌표가 포함됩니다. 화면에서 이동수단을 바꾸면 같은 출발지와 목적지로 경로를 다시 계산합니다.
 
 ### Google 로그인 API
 
@@ -275,12 +299,15 @@ npm --prefix backend run admin:create
 - 메인 지도, 검색, 마커, 목록과 상세정보
 - 현재 위치 및 지도 검색 결과 거리 표시
 - 서울 777곳·경기도 846곳·비수도권 3,397곳의 OSM 화장실 위치 데이터
-- 도보 전용 길찾기와 경로 시각화
+- 도보·자전거·자동차 길찾기와 경로 시각화
 - Google ID token 백엔드 검증과 PostgreSQL 사용자 저장
 - 화장실 제보와 요청사항 UI
 - 모바일 반응형 UI와 다크 모드
 - Vercel 프로덕션 배포
 - Express 화장실 CRUD 및 PostgreSQL 스키마
+- 코인·똥 피하기 미니게임 5단계 진행 및 5단계 이후 무한 난이도
+- 단계별 똥 크기·똥 개수 변화, 3목숨, 최고기록 localStorage 저장
+- 일시정지, 코인 획득 효과, 출발선·하단 안전선과 불꽃 효과
 
 ### 임시 구현
 

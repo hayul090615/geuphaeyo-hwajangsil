@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 
 type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; trail: number[] };
-const PLAYER_SPEED_PERCENT_PER_SECOND = 18;
+const PLAYER_SPEED_PERCENT_PER_SECOND = 24;
 const PLAYER_MIN_X = 8;
 const PLAYER_MAX_X = 92;
 const PLAYER_HIT_Y_MIN = 88;

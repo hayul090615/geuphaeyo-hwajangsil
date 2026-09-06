@@ -29,6 +29,7 @@ app.use((request, response, next) => {
 });
 
 app.use('/api/directions', directionsRouter);
+app.use('/api/directions', directionsPresenceRouter);
 app.use('/api/directions-presence', directionsPresenceRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/feedback', feedbackRouter);

@@ -28,7 +28,7 @@ function getVisitorId() {
 }
 
 async function requestPresence<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${getApiBaseUrl()}/api/directions-presence${path}`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/directions?resource=presence${path}`, {
     ...init,
     headers: { Accept: 'application/json', ...(init?.headers ?? {}) },
   });
@@ -46,7 +46,7 @@ export async function getGoingCounts(toiletIds: string[]): Promise<GoingCounts> 
   const ids = Array.from(new Set(toiletIds)).filter(Boolean).slice(0, 100);
   if (ids.length === 0) return {};
   const query = new URLSearchParams({ toiletIds: ids.join(',') });
-  const body = await requestPresence<{ counts?: GoingCounts }>(`?${query.toString()}`);
+  const body = await requestPresence<{ counts?: GoingCounts }>(`&${query.toString()}`);
   return body.counts ?? {};
 }
 

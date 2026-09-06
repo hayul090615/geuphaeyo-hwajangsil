@@ -58,7 +58,7 @@ Express REST API
    └─ PostgreSQL public.toilets
 
 길찾기 이용자 집계
-└─ /api/directions-presence
+└─ /api/directions?resource=presence
    └─ PostgreSQL public.toilet_direction_presence
 ```
 
@@ -217,9 +217,9 @@ PostgreSQL에는 계단 수, 비밀번호 필요 여부, 남녀 화장실 수, �
 
 | Method | Endpoint | 설명 |
 | --- | --- | --- |
-| `GET` | `/api/directions-presence?toiletIds=...` | 화장실별 현재 길찾기 인원 조회 |
-| `PUT` | `/api/directions-presence` | 특정 화장실 길찾기 세션 등록·갱신 |
-| `DELETE` | `/api/directions-presence` | 특정 화장실 길찾기 세션 종료 |
+| `GET` | `/api/directions?resource=presence&toiletIds=...` | 화장실별 현재 길찾기 인원 조회 |
+| `PUT` | `/api/directions?resource=presence` | 특정 화장실 길찾기 세션 등록·갱신 |
+| `DELETE` | `/api/directions?resource=presence` | 특정 화장실 길찾기 세션 종료 |
 
 ### Google 로그인 API
 

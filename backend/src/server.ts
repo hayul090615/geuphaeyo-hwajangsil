@@ -2,6 +2,7 @@ import express from 'express';
 import { env } from './config/env';
 import { pool } from './db/pool';
 import { directionsRouter } from './routes/directions';
+import { directionsPresenceRouter } from './routes/directions-presence';
 import { authRouter } from './routes/auth';
 import { feedbackRouter } from './routes/feedback';
 import { toiletReviewsRouter } from './routes/toilet-reviews';
@@ -28,6 +29,7 @@ app.use((request, response, next) => {
 });
 
 app.use('/api/directions', directionsRouter);
+app.use('/api/directions-presence', directionsPresenceRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/feedback', feedbackRouter);
 app.use('/api/toilet-reviews', toiletReviewsRouter);

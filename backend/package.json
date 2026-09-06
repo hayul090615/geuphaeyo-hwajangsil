@@ -19,7 +19,8 @@
     "db:migrate:reviews": "psql -h localhost -U postgres -d geuphaeyo -f sql/008_create_toilet_reviews.sql",
     "db:migrate:feedback-interactions": "psql -h localhost -U postgres -d geuphaeyo -f sql/009_add_feedback_likes_replies_and_notifications.sql",
     "db:migrate:review-likes": "psql -h localhost -U postgres -d geuphaeyo -f sql/010_create_toilet_review_likes.sql",
-    "db:setup": "npm run db:create && npm run db:schema && npm run db:seed && npm run db:migrate:users && npm run db:migrate:auth && npm run db:migrate:feedback-types && npm run db:migrate:reviews && npm run db:migrate:feedback-interactions && npm run db:migrate:review-likes",
+    "db:migrate:presence": "psql -h localhost -U postgres -d geuphaeyo -f sql/011_create_toilet_direction_presence.sql",
+    "db:setup": "npm run db:create && npm run db:schema && npm run db:seed && npm run db:migrate:users && npm run db:migrate:auth && npm run db:migrate:feedback-types && npm run db:migrate:reviews && npm run db:migrate:feedback-interactions && npm run db:migrate:review-likes && npm run db:migrate:presence",
     "admin:create": "tsx src/scripts/create-admin.ts",
     "start": "node dist/server.js"
   },

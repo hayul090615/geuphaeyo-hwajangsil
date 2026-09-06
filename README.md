@@ -56,6 +56,10 @@
 Express REST API
 └─ /toilets CRUD
    └─ PostgreSQL public.toilets
+
+길찾기 이용자 집계
+└─ /api/directions-presence
+   └─ PostgreSQL public.toilet_direction_presence
 ```
 
 프론트엔드는 PostgreSQL에 직접 접근하지 않습니다. 실제 데이터 연결은 `src/services`에서 Express API를 호출하는 방식으로 진행합니다.
@@ -207,6 +211,16 @@ PostgreSQL에는 계단 수, 비밀번호 필요 여부, 남녀 화장실 수, �
 
 응답에는 선택한 이동수단의 거리, 예상 시간, 지도에 표시할 경로 좌표가 포함됩니다. 화면에서 이동수단을 바꾸면 같은 출발지와 목적지로 경로를 다시 계산합니다.
 
+### 길찾기 이용자 수 API
+
+화장실별로 현재 길찾기를 진행 중인 익명 방문자 세션을 PostgreSQL에 저장합니다. 프론트엔드는 15초마다 heartbeat를 보내고 10초마다 화면의 숫자를 갱신합니다. 45초 이상 갱신되지 않은 세션은 자동으로 현재 인원에서 제외됩니다.
+
+| Method | Endpoint | 설명 |
+| --- | --- | --- |
+| `GET` | `/api/directions-presence?toiletIds=...` | 화장실별 현재 길찾기 인원 조회 |
+| `PUT` | `/api/directions-presence` | 특정 화장실 길찾기 세션 등록·갱신 |
+| `DELETE` | `/api/directions-presence` | 특정 화장실 길찾기 세션 종료 |
+
 ### Google 로그인 API
 
 POST /api/auth/google 요청 본문에는 Google Identity Services가 발급한 idToken을
@@ -282,6 +296,12 @@ npm --prefix backend run db:migrate:users 명령을 실행합니다.
 npm --prefix backend run db:migrate:auth
 ```
 
+기존 데이터베이스에 화장실별 길찾기 이용자 집계 테이블을 추가할 때는 다음 마이그레이션을 실행합니다.
+
+```bash
+npm --prefix backend run db:migrate:presence
+```
+
 관리자 계정은 `backend/.env`에 `ADMIN_EMAIL`, `ADMIN_PASSWORD`(12자 이상),
 `ADMIN_NAME`을 설정한 뒤 서버 측 명령으로 생성합니다. 비밀번호는 scrypt 해시로만 저장됩니다.
 
@@ -300,6 +320,7 @@ npm --prefix backend run admin:create
 - 현재 위치 및 지도 검색 결과 거리 표시
 - 서울 777곳·경기도 846곳·비수도권 3,397곳의 OSM 화장실 위치 데이터
 - 도보·자전거·자동차 길찾기와 경로 시각화
+- 화장실별 실시간 길찾기 이용자 수 표시
 - Google ID token 백엔드 검증과 PostgreSQL 사용자 저장
 - 화장실 제보와 요청사항 UI
 - 모바일 반응형 UI와 다크 모드

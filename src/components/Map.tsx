@@ -12,6 +12,7 @@ import userMarkerUrl from '../assets/user-marker.svg';
 import { addUserToilet, deleteUserToilet, getUserToilets, updateUserToilet } from '../services/userToiletService';
 import { getDirections } from '../services/directionsService';
 import type { DirectionsMode, DirectionsRoute } from '../services/directionsService';
+import { getGoingCounts, releaseGoing, touchGoing } from '../services/directionsPresenceService';
 import type { User } from '../types/auth';
 import ToiletReviewModal from './ToiletReviewModal';
 import AuthSideGame from './AuthSideGame';
@@ -86,14 +87,6 @@ function formatDistance(distance?: string) {
   const meters = Number(distance);
   if (Number.isNaN(meters)) return undefined;
   return meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`;
-}
-
-const GOING_COUNT_KEY = 'toilet-going-counts';
-function getPeopleGoing(toilet: MapToilet) {
-  try { const counts = JSON.parse(localStorage.getItem(GOING_COUNT_KEY) || '{}') as Record<string, number>; return Math.max(0, counts[toilet.id] || 0); } catch { return 0; }
-}
-function changePeopleGoing(toiletId: string, delta: number) {
-  try { const counts = JSON.parse(localStorage.getItem(GOING_COUNT_KEY) || '{}') as Record<string, number>; counts[toiletId] = Math.max(0, (counts[toiletId] || 0) + delta); localStorage.setItem(GOING_COUNT_KEY, JSON.stringify(counts)); } catch { /* local storage unavailable */ }
 }
 
 function toMapToilet(place: kakao.maps.services.PlacesSearchResultItem): MapToilet {
@@ -217,6 +210,8 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   const [userToilets, setUserToilets] = useState<Toilet[]>([]);
   const [isAddingToilet, setIsAddingToilet] = useState(false);
   const [isGameOpen, setIsGameOpen] = useState(false);
+  const [goingCounts, setGoingCounts] = useState<Record<string, number>>({});
+  const [activeGoingToiletId, setActiveGoingToiletId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState('서울 중심의 화장실을 찾는 중입니다.');
   const searchSequence = useRef(0);
   const searchTimer = useRef<number | null>(null);
@@ -228,7 +223,6 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   const regionQuery = query.replace(/화장실/g, ' ').trim();
 
   useEffect(() => setUserToilets(getUserToilets(user?.id ?? null)), [user?.id]);
-  useEffect(() => { try { localStorage.setItem(GOING_COUNT_KEY, '{}'); } catch { /* local storage unavailable */ } }, []);
 
   const fallbackToilets = useMemo<MapToilet[]>(() => [...toilets, ...userToilets].map((toilet) => ({
     id: `mock-${toilet.id}`,
@@ -513,6 +507,83 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     return filtered;
   }, [availableToilets, showRestrictedOnly]);
   const displayedToilets = directionsTarget ? [directionsTarget] : visibleToilets;
+  const displayedToiletIds = useMemo(
+    () => Array.from(new Set(displayedToilets.map((toilet) => toilet.id))),
+    [displayedToilets],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshGoingCounts = async () => {
+      try {
+        const counts = await getGoingCounts(displayedToiletIds);
+        if (cancelled) return;
+        setGoingCounts((current) => {
+          const next = { ...current };
+          displayedToiletIds.forEach((toiletId) => {
+            next[toiletId] = counts[toiletId] ?? 0;
+          });
+          return next;
+        });
+      } catch {
+        // 길찾기 숫자는 부가 정보이므로 지도와 경로 기능은 계속 사용할 수 있습니다.
+      }
+    };
+
+    void refreshGoingCounts();
+    const intervalId = window.setInterval(() => void refreshGoingCounts(), 10_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [displayedToiletIds]);
+
+  useEffect(() => {
+    if (!activeGoingToiletId) return undefined;
+
+    const refreshActivePresence = async () => {
+      try {
+        const result = await touchGoing(activeGoingToiletId);
+        setGoingCounts((current) => ({ ...current, [activeGoingToiletId]: result.count }));
+      } catch {
+        // 다음 heartbeat에서 다시 시도합니다.
+      }
+    };
+
+    void refreshActivePresence();
+    const intervalId = window.setInterval(() => void refreshActivePresence(), 15_000);
+    return () => window.clearInterval(intervalId);
+  }, [activeGoingToiletId]);
+
+  useEffect(() => () => {
+    const toiletId = activeGoingToiletRef.current;
+    if (toiletId) void releaseGoing(toiletId).catch(() => undefined);
+  }, []);
+
+  const getPeopleGoing = (toilet: MapToilet) => goingCounts[toilet.id] ?? 0;
+
+  const activateGoing = (toiletId: string) => {
+    const previousToiletId = activeGoingToiletRef.current;
+    if (previousToiletId === toiletId) return;
+
+    if (previousToiletId) void releaseGoing(previousToiletId).catch(() => undefined);
+    activeGoingToiletRef.current = toiletId;
+    setActiveGoingToiletId(toiletId);
+    void touchGoing(toiletId)
+      .then((result) => setGoingCounts((current) => ({ ...current, [toiletId]: result.count })))
+      .catch(() => undefined);
+  };
+
+  const deactivateGoing = () => {
+    const toiletId = activeGoingToiletRef.current;
+    if (!toiletId) return;
+
+    activeGoingToiletRef.current = null;
+    setActiveGoingToiletId(null);
+    void releaseGoing(toiletId)
+      .then((result) => setGoingCounts((current) => ({ ...current, [toiletId]: result.count })))
+      .catch(() => undefined);
+  };
 
   if (loading) return <div className="map-feedback">카카오 지도를 불러오는 중입니다.</div>;
 
@@ -624,11 +695,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   };
 
   const startDirections = (toilet: MapToilet) => {
-    if (activeGoingToiletRef.current !== toilet.id) {
-      if (activeGoingToiletRef.current) changePeopleGoing(activeGoingToiletRef.current, -1);
-      changePeopleGoing(toilet.id, 1);
-      activeGoingToiletRef.current = toilet.id;
-    }
+    activateGoing(toilet.id);
     setIsResultPanelOpen(true);
     searchSequence.current += 1;
     directionsTargetRef.current = toilet;
@@ -654,7 +721,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   };
 
   const stopDirections = () => {
-    if (activeGoingToiletRef.current) { changePeopleGoing(activeGoingToiletRef.current, -1); activeGoingToiletRef.current = null; }
+    deactivateGoing();
     directionsSequence.current += 1;
     directionsTargetRef.current = null;
     setDirectionsTarget(null);
@@ -896,6 +963,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                 <section className="route-guide" aria-label="경로 상세 안내">
                   <strong>{directionsTarget.name}</strong>
                   <span>{directionsTarget.address}</span>
+                  <small className="map-going-now">👥 {getPeopleGoing(directionsTarget)}명 가는 중 · 잠시 대기 가능</small>
                   <p>{routeMessage}</p>
                   {routeInfo && (
                     <>

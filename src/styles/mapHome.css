@@ -317,9 +317,36 @@
 }
 
 .map-home .map-place-info {
+  position: relative;
   width: 250px;
   gap: 7px;
   padding: 13px;
+}
+
+.map-place-close {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f3f5;
+  color: #53606d;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.map-place-close:hover {
+  background: #e4e9ed;
+}
+
+.map-home .map-place-info > strong {
+  padding-right: 24px;
 }
 
 .map-place-meta {

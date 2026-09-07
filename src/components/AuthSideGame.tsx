@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } fr
 import rainbowPoopUrl from '../assets/rainbow-poop.png';
 
 type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; size: 'normal' | 'giant' | 'cluster'; scale: number };
-const PLAYER_SPEED_PERCENT_PER_SECOND = 30;
+const PLAYER_SPEED_PERCENT_PER_SECOND = 32;
 const MAX_STAGE = 5;
 const GIANT_POOP_CHANCE = 0.16;
 const CLUSTER_POOP_CHANCE = 0.2;
@@ -70,7 +70,7 @@ const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = '
   scale,
   x: spawnX,
   y: spawnY,
-  speed: 0.011 + Math.random() * 0.004,
+  speed: 0.012 + Math.random() * 0.005,
 });
 const createStageItems = (stage: number) => {
   const counts = STAGE_ITEM_COUNTS[stage - 1];
@@ -233,7 +233,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         return createRespawnItem(item, currentItems);
       };
       const nextItems = currentItems.map((item) => {
-        const stageSpeedMultiplier = 1 + (stageRef.current - 1) * 0.22;
+        const stageSpeedMultiplier = 1 + (stageRef.current - 1) * 0.26;
         const nextY = item.y + item.speed * 16 * stageSpeedMultiplier * frameScale;
         const nearPlayer = Math.abs(nextY - PLAYER_HIT_Y_CENTER) < getItemHitYRadius(item)
           && Math.abs(item.x - playerXRef.current) < getItemHitXRadius(item);

@@ -908,6 +908,13 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                 >
                   {selectedToiletId === toilet.id && (
                     <div className="map-place-info">
+                      {directionsTarget && <button
+                        type="button"
+                        className="map-place-close"
+                        aria-label="도착지 화장실 팝업 닫기"
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => { event.stopPropagation(); setSelectedToiletId(null); }}
+                      >×</button>}
                       <strong>{toilet.name}</strong>
                       <span>{toilet.address}</span><span className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</span>
                       <p className="map-place-description">

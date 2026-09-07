@@ -29,7 +29,7 @@
 .is-adding-toilet .kakao-map{cursor:url('/toilet-cursor.svg') 16 16,crosshair!important}
 .is-adding-toilet,.is-adding-toilet *{cursor:url('/toilet-cursor.svg') 16 16,crosshair!important}
 .map-current-location-button{font-family:Arial,sans-serif!important;font-size:36px!important;line-height:0!important;align-items:center!important;justify-items:center!important}
-.map-current-location-button{font-size:0!important}.map-current-location-button::before{content:'⌖';font-family:Arial,sans-serif;font-size:36px;line-height:1;transform:none}
+.map-current-location-button{font-size:0!important}.map-current-location-button::before{content:'⌖';display:grid;width:100%;height:100%;place-items:center;font-family:Arial,sans-serif;font-size:42px;line-height:1;transform:none}
 .google-auth-generic-button{display:flex;width:100%;height:44px;align-items:center;justify-content:center;gap:8px;border:1px solid #d9dee5;border-radius:8px;background:#fff;color:#3c4652;font:inherit;font-size:14px;font-weight:700;cursor:pointer}.google-auth-generic-button:hover{background:#f7f9fb}
 
 .auth-side-game{touch-action:none}

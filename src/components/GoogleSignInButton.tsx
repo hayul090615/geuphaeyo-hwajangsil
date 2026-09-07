@@ -89,10 +89,10 @@ export default function GoogleSignInButton({ onCredential, onError }: GoogleSign
           type: "standard",
           theme: "outline",
           size: "large",
-          text: "signin_with",
+          text: "continue_with",
           shape: "rectangular",
           logo_alignment: "left",
-          width: 360,
+          width: Math.min(400, containerRef.current.clientWidth || 400),
         });
         setIsLoading(false);
       })
@@ -131,7 +131,7 @@ export default function GoogleSignInButton({ onCredential, onError }: GoogleSign
             }
           }}
         >
-          {isLoading ? "Google 로그인 준비 중..." : "Google 계정으로 로그인"}
+          <span className="google-g-mark" aria-hidden="true">G</span>{isLoading ? "Google 로그인 준비 중..." : "Google로 계속하기"}
         </button>
       </div>
     );

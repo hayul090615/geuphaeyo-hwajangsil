@@ -10,7 +10,7 @@ const MAX_DIFFICULTY_SPEED_MULTIPLIER = 2.3;
 const MAX_DIFFICULTY_GIANT_CHANCE = 0.3;
 const MAX_DIFFICULTY_CLUSTER_CHANCE = 0.24;
 const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
-const START_RAINBOW_DURATION_MS = 1250;
+const START_RAINBOW_DURATION_MS = 1600;
 const PLAYER_MIN_X = 6;
 const PLAYER_MAX_X = 94;
 const SPAWN_MIN_X = 3;
@@ -58,7 +58,7 @@ const getSpreadSpawnXs = (count: number) => Array.from({ length: count }, (_, in
   const segmentPadding = Math.min(2, segmentWidth * 0.18);
   return segmentStart + segmentPadding + Math.random() * Math.max(0, segmentWidth - segmentPadding * 2);
 }).sort(() => Math.random() - 0.5);
-const getStaggeredSpawnYs = (count: number) => Array.from({ length: count }, (_, index) => SPAWN_LINE_Y - index * 6 - Math.random() * 3)
+const getStaggeredSpawnYs = (count: number) => Array.from({ length: count }, (_, index) => SPAWN_LINE_Y + index * 4 + Math.random() * 2)
   .sort(() => Math.random() - 0.5);
 const getItemHitXRadius = (item: GameItem) => item.type === 'coin' ? COIN_HIT_X_RADIUS : item.size === 'giant'
   ? Math.min(5.6, ITEM_HIT_X_RADIUS * item.scale)

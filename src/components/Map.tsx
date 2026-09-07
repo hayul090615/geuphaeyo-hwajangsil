@@ -618,6 +618,8 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
       key={toilet.id}
       position={{ lat: toilet.lat, lng: toilet.lng }}
       image={directionsTarget?.id === toilet.id ? DESTINATION_MARKER_IMAGE : toilet.isUserAdded ? USER_MARKER_IMAGE : toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
+      zIndex={selectedToiletId === toilet.id ? 1000 : 1}
+      infoWindowOptions={{ disableAutoPan: true, zIndex: selectedToiletId === toilet.id ? 1001 : 1 }}
       title={`${toilet.requiresPassword ? '비밀번호 필요 · ' : toilet.requiresAccessKey ? '출입 확인 필요 · ' : ''}${toilet.name}`}
       onClick={() => directionsTarget ? setSelectedToiletId(toilet.id) : selectToilet(toilet)}
     >
@@ -899,6 +901,8 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                   key={toilet.id}
                   position={{ lat: toilet.lat, lng: toilet.lng }}
                   image={directionsTarget?.id === toilet.id ? DESTINATION_MARKER_IMAGE : toilet.isUserAdded ? USER_MARKER_IMAGE : toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
+                  zIndex={selectedToiletId === toilet.id ? 1000 : 1}
+                  infoWindowOptions={{ disableAutoPan: true, zIndex: selectedToiletId === toilet.id ? 1001 : 1 }}
                   title={`${toilet.requiresPassword ? '비밀번호 필요 · ' : toilet.requiresAccessKey ? '출입 확인 필요 · ' : ''}${toilet.name}`}
                   onClick={() => setSelectedToiletId((current) => directionsTarget ? toilet.id : current === toilet.id ? null : toilet.id)}
                 >

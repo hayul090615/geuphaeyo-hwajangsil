@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Map as KakaoMap,
-  CustomOverlayMap,
   MapMarker,
   MarkerClusterer,
   Polyline,
@@ -166,76 +165,6 @@ function getDistanceMeters(origin: Position, destination: Position) {
     Math.cos(originLatitude) * Math.cos(destinationLatitude) * Math.sin(longitudeDelta / 2) ** 2;
 
   return 6_371_000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
-}
-
-type RouteArrow = {
-  position: { lat: number; lng: number };
-  rotation: number;
-};
-
-const ROUTE_ARROW_SPACING_METERS = 90;
-const MAX_ROUTE_ARROWS = 32;
-
-function getRouteArrows(path: DirectionsRoute['path']): RouteArrow[] {
-  if (path.length < 2) return [];
-
-  const segments: Array<{
-    from: { lat: number; lng: number };
-    to: { lat: number; lng: number };
-    startDistance: number;
-    distance: number;
-    rotation: number;
-  }> = [];
-  let totalDistance = 0;
-
-  path.slice(1).forEach((point, index) => {
-    const previous = path[index];
-    const from = { lat: previous.latitude, lng: previous.longitude };
-    const to = { lat: point.latitude, lng: point.longitude };
-    const distance = getDistanceMeters(from, to);
-    if (distance <= 0) return;
-
-    const toRadians = (degrees: number) => degrees * (Math.PI / 180);
-    const latitude1 = toRadians(from.lat);
-    const latitude2 = toRadians(to.lat);
-    const longitudeDelta = toRadians(to.lng - from.lng);
-    const bearing = (Math.atan2(
-      Math.sin(longitudeDelta) * Math.cos(latitude2),
-      Math.cos(latitude1) * Math.sin(latitude2) -
-        Math.sin(latitude1) * Math.cos(latitude2) * Math.cos(longitudeDelta),
-    ) * 180 / Math.PI + 360) % 360;
-
-    segments.push({ from, to, startDistance: totalDistance, distance, rotation: bearing - 90 });
-    totalDistance += distance;
-  });
-
-  if (!segments.length) return [];
-
-  const spacing = Math.max(ROUTE_ARROW_SPACING_METERS, totalDistance / (MAX_ROUTE_ARROWS + 1));
-  const arrows: RouteArrow[] = [];
-  let segmentIndex = 0;
-  for (let targetDistance = spacing * 0.65; targetDistance < totalDistance - spacing * 0.35; targetDistance += spacing) {
-    while (
-      segmentIndex < segments.length - 1 &&
-      targetDistance > segments[segmentIndex].startDistance + segments[segmentIndex].distance
-    ) {
-      segmentIndex += 1;
-    }
-
-    const segment = segments[segmentIndex];
-    const progress = Math.min(1, Math.max(0, (
-      targetDistance - segment.startDistance
-    ) / segment.distance));
-    arrows.push({
-      position: {
-        lat: segment.from.lat + (segment.to.lat - segment.from.lat) * progress,
-        lng: segment.from.lng + (segment.to.lng - segment.from.lng) * progress,
-      },
-      rotation: segment.rotation,
-    });
-  }
-
-  return arrows;
 }
 
 function Map({ toilets, query, user, onLoginRequired }: MapProps) {
@@ -638,7 +567,6 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   }, []);
 
   const getPeopleGoing = (toilet: MapToilet) => goingCounts[toilet.id] ?? 0;
-  const routeArrows = useMemo(() => getRouteArrows(routeInfo?.path ?? []), [routeInfo?.path]);
 
   const activateGoing = (toiletId: string) => {
     const previousToiletId = activeGoingToiletRef.current;
@@ -956,32 +884,13 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
             )}
 
             {routeInfo && (
-              <>
-                <Polyline
-                  path={routeInfo.path.map((point) => ({ lat: point.latitude, lng: point.longitude }))}
-                  strokeWeight={6}
-                  strokeColor="#ff5d4c"
-                  strokeOpacity={0.9}
-                  strokeStyle="solid"
-                />
-                {routeArrows.map((arrow, index) => (
-                  <CustomOverlayMap
-                    key={`${arrow.position.lat}-${arrow.position.lng}-${index}`}
-                    position={arrow.position}
-                    xAnchor={0.5}
-                    yAnchor={0.5}
-                    zIndex={2}
-                  >
-                    <span
-                      className="map-route-arrow"
-                      style={{ transform: `rotate(${arrow.rotation}deg)` }}
-                      aria-hidden="true"
-                    >
-                      ➤
-                    </span>
-                  </CustomOverlayMap>
-                ))}
-              </>
+              <Polyline
+                path={routeInfo.path.map((point) => ({ lat: point.latitude, lng: point.longitude }))}
+                strokeWeight={6}
+                strokeColor="#ff5d4c"
+                strokeOpacity={0.9}
+                strokeStyle="solid"
+              />
             )}
 
             <MarkerClusterer averageCenter minLevel={7}>

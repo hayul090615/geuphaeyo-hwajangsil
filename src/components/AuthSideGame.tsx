@@ -7,8 +7,10 @@ const MAX_STAGE = 5;
 const GIANT_POOP_CHANCE = 0.16;
 const CLUSTER_POOP_CHANCE = 0.2;
 const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
-const PLAYER_MIN_X = 8;
-const PLAYER_MAX_X = 92;
+const PLAYER_MIN_X = 6;
+const PLAYER_MAX_X = 94;
+const SPAWN_MIN_X = 3;
+const SPAWN_MAX_X = 97;
 const SPAWN_LINE_Y = 12;
 const BOTTOM_LINE_Y = 96;
 const PLAYER_HIT_Y_CENTER = 94;
@@ -39,18 +41,25 @@ const saveHighScore = (score: number) => {
     // localStorage may be unavailable in private browsing contexts.
   }
 };
+const getRandomSpawnX = () => SPAWN_MIN_X + Math.random() * (SPAWN_MAX_X - SPAWN_MIN_X);
+const getSpreadSpawnXs = (count: number) => Array.from({ length: count }, (_, index) => {
+  const segmentWidth = (SPAWN_MAX_X - SPAWN_MIN_X) / count;
+  const segmentStart = SPAWN_MIN_X + index * segmentWidth;
+  const segmentPadding = Math.min(2, segmentWidth * 0.18);
+  return segmentStart + segmentPadding + Math.random() * Math.max(0, segmentWidth - segmentPadding * 2);
+}).sort(() => Math.random() - 0.5);
 const getItemHitXRadius = (item: GameItem) => item.type === 'coin' ? COIN_HIT_X_RADIUS : item.size === 'giant'
   ? Math.min(5.6, ITEM_HIT_X_RADIUS * item.scale)
   : item.size === 'cluster' ? ITEM_HIT_X_RADIUS * 1.5 : ITEM_HIT_X_RADIUS;
 const getItemHitYRadius = (item: GameItem) => item.type === 'coin' ? COIN_HIT_Y_RADIUS : item.size === 'giant'
   ? Math.min(4.5, PLAYER_HIT_Y_RADIUS * item.scale)
   : item.size === 'cluster' ? PLAYER_HIT_Y_RADIUS * 1.5 : PLAYER_HIT_Y_RADIUS;
-const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = 'normal', scale = 1): GameItem => ({
+const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = 'normal', scale = 1, spawnX = getRandomSpawnX()): GameItem => ({
   id,
   type,
   size,
   scale,
-  x: 10 + Math.random() * 80,
+  x: spawnX,
   y: SPAWN_LINE_Y,
   speed: 0.009 + Math.random() * 0.004,
 });
@@ -60,7 +69,8 @@ const createStageItems = (stage: number, endlessLevel = 0) => {
     ...Array.from({ length: counts.poop + (stage === MAX_STAGE ? endlessLevel : 0) }, () => 'poop' as const),
     ...Array.from({ length: counts.coin }, () => 'coin' as const),
   ];
-  const items = types.sort(() => Math.random() - 0.5).map((type, id) => makeItem(id, type));
+  const spawnXs = getSpreadSpawnXs(types.length);
+  const items = types.sort(() => Math.random() - 0.5).map((type, id) => makeItem(id, type, 'normal', 1, spawnXs[id]));
   const poopItems = items.filter((item) => item.type === 'poop');
   if (stage >= 2 && stage <= 4 && poopItems.length > 0) {
     const target = poopItems[Math.floor(Math.random() * poopItems.length)];

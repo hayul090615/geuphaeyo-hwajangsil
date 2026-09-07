@@ -577,7 +577,7 @@
 /* Keep the login card centered with equal left and right breathing room. */
 @media (min-width: 1201px) {
   .auth-page {
-    grid-template-columns: minmax(0, 1fr) minmax(440px, 480px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: clamp(52px, 4vw, 72px);
     padding-left: clamp(24px, 4vw, 64px);
     padding-right: clamp(24px, 4vw, 64px);
@@ -591,7 +591,7 @@
 
   .auth-page .auth-card {
     grid-column: 2;
-    justify-self: center;
+    justify-self: start;
   }
 }
 

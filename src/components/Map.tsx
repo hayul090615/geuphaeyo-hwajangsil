@@ -230,7 +230,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
 
   useEffect(() => setUserToilets(getUserToilets(user?.id ?? null)), [user?.id]);
 
-  const fallbackToilets = useMemo<MapToilet[]>(() => [...toilets, ...userToilets].map((toilet) => ({
+  const fallbackToilets = useMemo<MapToilet[]>(() => [...toilets.filter((toilet) => !toilet.isUserAdded), ...userToilets].map((toilet) => ({
     id: `mock-${toilet.id}`,
     name: toilet.name,
     address: toilet.address,
@@ -513,8 +513,8 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     return filtered;
   }, [availableToilets, showRestrictedOnly]);
   const displayedToilets = directionsTarget ? [directionsTarget] : visibleToilets;
-  const displayedToiletIds = useMemo(
-    () => Array.from(new Set(displayedToilets.map((toilet) => toilet.id))),
+  const presenceToiletIds = useMemo(
+    () => Array.from(new Set(displayedToilets.filter((toilet) => !toilet.isUserAdded).map((toilet) => toilet.id))),
     [displayedToilets],
   );
 
@@ -522,11 +522,11 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     let cancelled = false;
     const refreshGoingCounts = async () => {
       try {
-        const counts = await getGoingCounts(displayedToiletIds);
+        const counts = await getGoingCounts(presenceToiletIds);
         if (cancelled) return;
         setGoingCounts((current) => {
           const next = { ...current };
-          displayedToiletIds.forEach((toiletId) => {
+          presenceToiletIds.forEach((toiletId) => {
             next[toiletId] = counts[toiletId] ?? 0;
           });
           return next;
@@ -542,7 +542,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [displayedToiletIds]);
+  }, [presenceToiletIds]);
 
   useEffect(() => {
     if (!activeGoingToiletId) return undefined;
@@ -625,7 +625,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     >
       {selectedToiletId === toilet.id && (
         <div className="map-place-info">
-          <strong>{toilet.name}</strong><span>{toilet.address}</span><span className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</span>
+          <strong>{toilet.name}</strong><span>{toilet.address}</span>{!toilet.isUserAdded && <span className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</span>}
           <p className="map-place-description">{toilet.category || '화장실'}로 등록된 시설입니다. 운영시간과 현장 편의시설은 방문 전 확인해 주세요.</p>
           <div className="map-place-meta">
             {toilet.category && <span>{toilet.category}</span>}{toilet.distance && <em>{toilet.distance}</em>}
@@ -703,7 +703,8 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   };
 
   const startDirections = (toilet: MapToilet) => {
-    activateGoing(toilet.id);
+    if (toilet.isUserAdded) deactivateGoing();
+    else activateGoing(toilet.id);
     setIsResultPanelOpen(true);
     searchSequence.current += 1;
     directionsTargetRef.current = toilet;
@@ -916,7 +917,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                         onClick={(event) => { event.stopPropagation(); setSelectedToiletId(null); }}
                       >×</button>}
                       <strong>{toilet.name}</strong>
-                      <span>{toilet.address}</span><span className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</span>
+                      <span>{toilet.address}</span>{!toilet.isUserAdded && <span className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</span>}
                       <p className="map-place-description">
                         {toilet.category || '화장실'}로 등록된 시설입니다. 운영시간과 현장 편의시설은 방문 전 전화 또는 현장 안내로 확인해 주세요.
                       </p>
@@ -977,7 +978,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                 <section className="route-guide" aria-label="경로 상세 안내">
                   <strong>{directionsTarget.name}</strong>
                   <span>{directionsTarget.address}</span>
-                  <small className="map-going-now">👥 {getPeopleGoing(directionsTarget)}명 가는 중 · 잠시 대기 가능</small>
+                  {!directionsTarget.isUserAdded && <small className="map-going-now">👥 {getPeopleGoing(directionsTarget)}명 가는 중 · 잠시 대기 가능</small>}
                   <p>{routeMessage}</p>
                   {routeInfo && (
                     <>
@@ -1021,7 +1022,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                       <span className="map-result-copy">
                         <strong>{toilet.name}</strong>
                         <span>{toilet.address}</span>
-                        <small className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</small>
+                        {!toilet.isUserAdded && <small className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</small>}
                         <small>{getDataConfidenceLabel(toilet)}</small>
                       </span>
                       {toilet.distance && <em>{toilet.distance}</em>}

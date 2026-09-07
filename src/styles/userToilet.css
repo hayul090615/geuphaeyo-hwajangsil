@@ -132,8 +132,8 @@
 }
 
 .auth-intro {
-  width: min(100%, 620px);
-  justify-self: end;
+  width: min(100%, 820px);
+  justify-self: start;
   color: #17202a;
 }
 

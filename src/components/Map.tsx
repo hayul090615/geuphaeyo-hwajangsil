@@ -41,6 +41,7 @@ const MAX_SEARCH_CACHE_ENTRIES = 24;
 const DIRECTIONS_MODE_OPTIONS: Array<{ mode: DirectionsMode; icon: string; label: string }> = [
   { mode: 'walk', icon: '🚶', label: '도보' },
   { mode: 'bicycle', icon: '🚲', label: '자전거' },
+  { mode: 'car', icon: '🚗', label: '자동차' },
 ];
 
 const MAP_REGIONS = [
@@ -816,7 +817,6 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                   </div>
                 )}
               </div>
-              <small>{routeMessage}</small>
               {routeInfo?.fareWon !== undefined && (
                 <div className="map-route-summary">
                   <em>{routeInfo.fareWon.toLocaleString('ko-KR')}원</em>

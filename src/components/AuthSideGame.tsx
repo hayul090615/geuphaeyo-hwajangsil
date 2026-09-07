@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type PointerEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import rainbowPoopUrl from '../assets/rainbow-poop.png';
 
 type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; size: 'normal' | 'giant' | 'cluster'; scale: number };
@@ -26,7 +26,15 @@ const STAGE_ITEM_COUNTS = [
   { poop: 10, coin: 2 },
 ] as const;
 const getLargePoopScale = (stage: number) => stage === 2 ? 2 : stage === 3 ? 2.5 : 3;
-const getEndlessLevel = (score: number) => score < MAX_STAGE * 10 ? 0 : Math.floor((score - MAX_STAGE * 10) / 10) + 1;
+const POOP_EXPLOSION_PARTICLES = Array.from({ length: 18 }, (_, index) => {
+  const angle = (index / 18) * Math.PI * 2;
+  const distance = 72 + (index % 3) * 22;
+  return {
+    x: Math.cos(angle) * distance,
+    y: Math.sin(angle) * distance,
+    delay: (index % 5) * 0.04,
+  };
+});
 const readHighScore = () => {
   try {
     return Number(window.localStorage.getItem(HIGH_SCORE_KEY)) || 0;
@@ -63,10 +71,10 @@ const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = '
   y: SPAWN_LINE_Y,
   speed: 0.009 + Math.random() * 0.004,
 });
-const createStageItems = (stage: number, endlessLevel = 0) => {
+const createStageItems = (stage: number) => {
   const counts = STAGE_ITEM_COUNTS[stage - 1];
   const types: GameItem['type'][] = [
-    ...Array.from({ length: counts.poop + (stage === MAX_STAGE ? endlessLevel : 0) }, () => 'poop' as const),
+    ...Array.from({ length: counts.poop }, () => 'poop' as const),
     ...Array.from({ length: counts.coin }, () => 'coin' as const),
   ];
   const spawnXs = getSpreadSpawnXs(types.length);
@@ -89,19 +97,18 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(readHighScore);
   const [stage, setStage] = useState(1);
-  const [endlessLevel, setEndlessLevel] = useState(0);
   const [lives, setLives] = useState(3);
   const [playerX, setPlayerX] = useState(50);
   const [coinEffect, setCoinEffect] = useState(false);
   const [paused, setPaused] = useState(false);
   const [fireEffect, setFireEffect] = useState<{ id: number; x: number } | null>(null);
   const [gameOver, setGameOver] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const playerXRef = useRef(50);
   const directionRef = useRef<-1 | 0 | 1>(0);
   const scoreRef = useRef(0);
   const highScoreRef = useRef(highScore);
   const stageRef = useRef(1);
-  const endlessLevelRef = useRef(0);
   const livesRef = useRef(3);
   const invulnerableUntilRef = useRef(0);
   const itemsRef = useRef<GameItem[]>([]);
@@ -116,7 +123,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     directionRef.current = event.clientX < center - deadZone ? -1 : event.clientX > center + deadZone ? 1 : 0;
   };
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (gameOver || paused) return;
+    if (gameOver || completed || paused) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     pointerStartRef.current = { id: event.pointerId, x: event.clientX, playerX: playerXRef.current };
     setPointerDirection(event);
@@ -151,7 +158,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-      if (paused) return;
+      if (paused || completed) return;
       event.preventDefault();
       directionRef.current = event.key === 'ArrowLeft' ? -1 : 1;
     };
@@ -166,10 +173,10 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', stopPointerDirection);
     };
-  }, [paused]);
+  }, [completed, paused]);
 
   useEffect(() => {
-    if (gameOver || paused) return undefined;
+    if (gameOver || completed || paused) return undefined;
     let frame = 0;
     let previousTime: number | null = null;
     const createRespawnItem = (item: GameItem, currentItems: GameItem[]) => {
@@ -229,13 +236,16 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
           saveHighScore(nextScore);
         }
         const nextStage = Math.min(MAX_STAGE, Math.floor(nextScore / 10) + 1);
-        const nextEndlessLevel = getEndlessLevel(nextScore);
-        if (nextStage > stageRef.current || nextEndlessLevel > endlessLevelRef.current) {
+        if (nextScore >= MAX_STAGE * 10) {
+          directionRef.current = 0;
+          itemsRef.current = [];
+          setItems([]);
+          setGameOver(false);
+          setCompleted(true);
+        } else if (nextStage > stageRef.current) {
           stageRef.current = nextStage;
           setStage(nextStage);
-          endlessLevelRef.current = nextEndlessLevel;
-          setEndlessLevel(nextEndlessLevel);
-          const stageItems = createStageItems(nextStage, nextEndlessLevel);
+          const stageItems = createStageItems(nextStage);
           itemsRef.current = stageItems;
           setItems(stageItems);
         } else {
@@ -250,12 +260,11 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     };
     frame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frame);
-  }, [gameOver, paused]);
+  }, [completed, gameOver, paused]);
 
   const restart = () => {
     directionRef.current = 0;
     scoreRef.current = 0;
-    endlessLevelRef.current = 0;
     livesRef.current = 3;
     invulnerableUntilRef.current = 0;
     stageRef.current = 1;
@@ -266,15 +275,15 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     setItems(stageItems);
     setScore(0);
     setLives(3);
-    setEndlessLevel(0);
     setStage(1);
     setPaused(false);
     setGameOver(false);
     setCoinEffect(false);
     setFireEffect(null);
+    setCompleted(false);
   };
   const togglePause = () => {
-    if (gameOver) return;
+    if (gameOver || completed) return;
     pointerStartRef.current = null;
     directionRef.current = 0;
     setPaused((current) => !current);
@@ -285,7 +294,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     <div className="auth-game-lives" aria-label={`생명 ${lives}개`}>❤️ × {lives}</div>
     <div className={`auth-game-score${coinEffect ? ' is-coin-pop' : ''}`}><span className="auth-coin-icon" aria-hidden="true" /> {score}</div>
     <div className="auth-game-best">최고기록 {highScore}</div>
-    <div className="auth-game-stage">{endlessLevel > 0 ? `STAGE ${MAX_STAGE}+${endlessLevel}` : `STAGE ${stage} / ${MAX_STAGE}`}</div>
+    <div className="auth-game-stage">STAGE {stage} / {MAX_STAGE}</div>
     <div className="auth-game-spawn-line" aria-hidden="true" />
     {coinEffect && <span className="auth-game-coin-burst" style={{ left: `${playerX}%` }} aria-hidden="true">+1 ✨</span>}
     {items.map((item) => <Fragment key={item.id}>
@@ -297,6 +306,19 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     {fireEffect && <span className="auth-poop-fire" style={{ left: `${fireEffect.x}%` }} aria-hidden="true">🔥</span>}
     <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="Player">🚽</div>
     {paused && !gameOver && <div className="auth-game-paused" aria-live="polite">일시정지</div>}
+    {completed && <div className="auth-game-complete" role="dialog" aria-modal="true" aria-label="게임 완료">
+      <div className="auth-poop-explosion" aria-hidden="true">
+        {POOP_EXPLOSION_PARTICLES.map((particle, index) => <img
+          key={index}
+          src={rainbowPoopUrl}
+          alt=""
+          style={{ '--explosion-x': `${particle.x}px`, '--explosion-y': `${particle.y}px`, '--explosion-delay': `${particle.delay}s` } as CSSProperties}
+        />)}
+      </div>
+      <strong>수고하셨습니다!</strong>
+      <span>5단계를 모두 완료했어요 🎉</span>
+      <div><button type="button" onClick={restart}>다시하기</button><button type="button" onClick={onExit}>종료하기</button></div>
+    </div>}
     {gameOver && <div className="auth-game-over" role="dialog" aria-modal="true" aria-label="게임 종료"><strong>똥에 맞았어요!</strong><span>점수: {score}</span><div><button type="button" onClick={restart}>다시하기</button><button type="button" onClick={onExit}>종료하기</button></div></div>}
   </div>;
 }

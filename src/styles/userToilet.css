@@ -62,3 +62,8 @@
   .auth-side-game.stage-4 .auth-game-player{font-size:26px}
   .auth-side-game.stage-5 .auth-game-player{font-size:29px}
 }
+.auth-game-complete{position:absolute;inset:0;z-index:20;display:grid;place-content:center;justify-items:center;gap:10px;overflow:hidden;background:#17202acc;color:#fff;text-align:center;padding:20px;backdrop-filter:blur(3px)}
+.auth-game-complete strong,.auth-game-complete span,.auth-game-complete div:last-child{position:relative;z-index:2}
+.auth-game-complete strong{font-size:24px;text-shadow:0 2px 6px #17202a99}.auth-game-complete span{font-size:14px}.auth-game-complete div:last-child{display:flex;gap:8px}.auth-game-complete button{border:0;border-radius:999px;padding:10px 16px;background:#ffb347;color:#17202a;font-weight:800;cursor:pointer}.auth-game-complete button:last-child{background:#fff;color:#53606d}
+.auth-poop-explosion{position:absolute;inset:0;z-index:1;pointer-events:none}.auth-poop-explosion img{position:absolute;top:50%;left:50%;width:30px;height:30px;object-fit:contain;opacity:0;animation:auth-poop-explode 1.15s cubic-bezier(.2,.75,.35,1) var(--explosion-delay) both}
+@keyframes auth-poop-explode{0%{opacity:0;transform:translate(-50%,-50%) scale(.15) rotate(0)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.1) rotate(70deg)}100%{opacity:.1;transform:translate(calc(-50% + var(--explosion-x)),calc(-50% + var(--explosion-y))) scale(.72) rotate(420deg)}}

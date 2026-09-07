@@ -27,15 +27,12 @@ const STAGE_ITEM_COUNTS = [
   { poop: 10, coin: 2 },
 ] as const;
 const getLargePoopScale = (stage: number) => stage === 2 ? 2 : stage === 3 ? 2.5 : 3;
-const POOP_EXPLOSION_PARTICLES = Array.from({ length: 18 }, (_, index) => {
-  const angle = (index / 18) * Math.PI * 2;
-  const distance = 72 + (index % 3) * 22;
-  return {
-    x: Math.cos(angle) * distance,
-    y: Math.sin(angle) * distance,
-    delay: (index % 5) * 0.04,
-  };
-});
+const POOP_EXPLOSION_PARTICLES = [
+  { left: 2, top: 3 }, { left: 17, top: 1 }, { left: 34, top: 3 }, { left: 52, top: 1 }, { left: 70, top: 3 }, { left: 88, top: 1 },
+  { left: 98, top: 19 }, { left: 98, top: 39 }, { left: 98, top: 61 }, { left: 98, top: 81 },
+  { left: 88, top: 98 }, { left: 70, top: 99 }, { left: 52, top: 98 }, { left: 34, top: 99 }, { left: 17, top: 98 },
+  { left: 2, top: 82 }, { left: 2, top: 62 }, { left: 2, top: 38 },
+].map((particle, index) => ({ ...particle, delay: (index % 5) * 0.04 }));
 const readHighScore = () => {
   try {
     return Number(window.localStorage.getItem(HIGH_SCORE_KEY)) || 0;
@@ -320,7 +317,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
           key={index}
           src={rainbowPoopUrl}
           alt=""
-          style={{ '--explosion-x': `${particle.x}px`, '--explosion-y': `${particle.y}px`, '--explosion-delay': `${particle.delay}s` } as CSSProperties}
+          style={{ '--explosion-left': `${particle.left}%`, '--explosion-top': `${particle.top}%`, '--explosion-delay': `${particle.delay}s` } as CSSProperties}
         />)}
       </div>
     </div>}
@@ -331,7 +328,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
           key={index}
           src={rainbowPoopUrl}
           alt=""
-          style={{ '--explosion-x': `${particle.x}px`, '--explosion-y': `${particle.y}px`, '--explosion-delay': `${particle.delay}s` } as CSSProperties}
+          style={{ '--explosion-left': `${particle.left}%`, '--explosion-top': `${particle.top}%`, '--explosion-delay': `${particle.delay}s` } as CSSProperties}
         />)}
       </div>
       <strong>수고하셨습니다!</strong>

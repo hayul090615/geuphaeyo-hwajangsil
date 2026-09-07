@@ -296,7 +296,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     setPaused((current) => !current);
   };
 
-  return <div className={`auth-side-game stage-${stage}`} aria-label="Poop dodge coin game" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerEnd} onPointerCancel={handlePointerEnd} onPointerLeave={handlePointerEnd}>
+  return <div className={`auth-side-game stage-${stage}${isStarting ? ' is-starting' : ''}`} aria-label="Poop dodge coin game" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerEnd} onPointerCancel={handlePointerEnd} onPointerLeave={handlePointerEnd}>
     <button className="auth-game-pause" type="button" aria-label={paused ? '게임 재개' : '게임 일시정지'} onPointerDown={(event) => event.stopPropagation()} onClick={togglePause}>{paused ? '▶️' : '⏸️'}</button>
     <div className="auth-game-lives" aria-label={`생명 ${lives}개`}>❤️ × {lives}</div>
     <div className={`auth-game-score${coinEffect ? ' is-coin-pop' : ''}`}><span className="auth-coin-icon" aria-hidden="true" /> {score}</div>

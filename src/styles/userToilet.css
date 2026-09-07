@@ -70,3 +70,8 @@
 .auth-game-start-rainbow{position:absolute;top:-58%;left:50%;z-index:18;width:180%;height:78%;transform:translateX(-50%);pointer-events:none;filter:saturate(1.45) drop-shadow(0 5px 8px #6c5ce777);animation:auth-rainbow-slide 1.25s cubic-bezier(.3,.7,.25,1) both}
 .auth-game-start-rainbow span{position:absolute;top:calc(var(--rainbow-band) / 2);left:50%;width:calc(100% - var(--rainbow-band));height:calc(100% - var(--rainbow-band));transform:translateX(-50%);border:clamp(7px,1.2vw,13px) solid var(--rainbow-color);border-bottom-color:transparent;border-radius:50% 50% 0 0;box-sizing:border-box}
 @keyframes auth-rainbow-slide{0%{opacity:0;transform:translate(-50%,-18%) rotate(-5deg)}15%{opacity:1}85%{opacity:1}100%{opacity:0;transform:translate(-50%,180%) rotate(5deg)}}
+.auth-side-game.is-starting .auth-game-item{visibility:hidden}
+.auth-side-game .auth-game-best{top:45px;left:12px;transform:none}
+.auth-side-game .auth-game-stage{top:69px}
+@media (max-width:900px){.auth-side-game .auth-game-best{top:42px;left:7px;font-size:9px}.auth-side-game .auth-game-stage{top:64px}}
+@media (max-width:760px){.auth-side-game .auth-game-best{top:38px;left:5px;font-size:8px}.auth-side-game .auth-game-stage{top:58px;font-size:8px}}

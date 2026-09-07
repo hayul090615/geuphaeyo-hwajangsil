@@ -937,13 +937,6 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                 출입 제한만
                 <strong>{restrictedToiletCount}</strong>
               </button>
-              <div className="map-marker-legend" aria-label="지도 마커 안내">
-                <span>
-                  <i className="map-legend-default" aria-hidden="true" />
-                  일반 화장실
-                </span>
-                <span><img src={keyMarkerUrl} alt="" />비밀번호·출입 확인</span>
-              </div>
             </div>
           )}
 

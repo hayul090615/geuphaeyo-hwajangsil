@@ -1086,6 +1086,25 @@
   object-fit: contain;
 }
 
+.map-add-toilet-button,
+.map-current-location-button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+.map-add-toilet-button {
+  font-family: Arial, sans-serif;
+}
+
+.map-current-location-button::before {
+  display: block;
+  transform: none;
+  line-height: 1;
+}
+
 .map-region-label {
   padding: 5px 10px;
   border: 2px solid var(--region-color);

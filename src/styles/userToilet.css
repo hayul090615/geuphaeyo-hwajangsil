@@ -84,3 +84,4 @@
 @keyframes auth-heart-break-left{0%,28%{transform:translate(0,0) rotate(0)}100%{transform:translate(-5px,5px) rotate(-16deg)}}
 @keyframes auth-heart-break-right{0%,28%{transform:translate(0,0) rotate(0)}100%{transform:translate(5px,5px) rotate(16deg)}}
 @media (max-width:760px){.auth-game-damage{bottom:calc(7% + 30px);font-size:12px}}
+.auth-game-item{left:var(--item-left,0%);top:var(--item-top,0%);will-change:transform}.auth-side-game .auth-game-player{left:var(--player-left,50%);transition:none!important;will-change:transform}.auth-game-item .auth-falling-item.poop:not(.cluster){animation:auth-poop-spin .8s linear infinite;will-change:transform}

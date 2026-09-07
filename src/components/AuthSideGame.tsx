@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import rainbowPoopUrl from '../assets/rainbow-poop.png';
 
 type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; size: 'normal' | 'giant' | 'cluster'; scale: number };
@@ -8,7 +8,6 @@ const GIANT_POOP_CHANCE = 0.16;
 const CLUSTER_POOP_CHANCE = 0.2;
 const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
 const START_RAINBOW_DURATION_MS = 1250;
-const GAME_UI_UPDATE_INTERVAL_MS = 33;
 const PLAYER_MIN_X = 6;
 const PLAYER_MAX_X = 94;
 const SPAWN_MIN_X = 3;
@@ -115,11 +114,11 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const highScoreRef = useRef(highScore);
   const stageRef = useRef(1);
   const livesRef = useRef(3);
-  const itemsRef = useRef<GameItem[]>([]);
-  const nextId = useRef(20);
+  const itemsRef = useRef<GameItem[]>(items);
   const damageEffectId = useRef(0);
   const pointerStartRef = useRef<{ id: number; x: number; playerX: number } | null>(null);
-  itemsRef.current = items;
+  const itemElementRefs = useRef(new Map<number, HTMLDivElement>());
+  const playerElementRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!isStarting) return undefined;
@@ -190,7 +189,25 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     if (gameOver || completed || isStarting || paused) return undefined;
     let frame = 0;
     let previousTime: number | null = null;
-    let lastUiUpdateTime = 0;
+    const syncDomPositions = (currentItems: GameItem[], nextPlayerX: number) => {
+      const gameElement = playerElementRef.current?.parentElement;
+      if (!gameElement) return;
+      const gameWidth = gameElement.clientWidth;
+      const gameHeight = gameElement.clientHeight;
+      if (!gameWidth || !gameHeight) return;
+
+      currentItems.forEach((item) => {
+        const element = itemElementRefs.current.get(item.id);
+        if (!element) return;
+        element.style.left = '0';
+        element.style.top = '0';
+        element.style.transform = `translate3d(${gameWidth * item.x / 100}px, ${gameHeight * item.y / 100}px, 0) translate3d(-50%, -50%, 0)`;
+      });
+      if (playerElementRef.current) {
+        playerElementRef.current.style.left = '0';
+        playerElementRef.current.style.transform = `translate3d(${gameWidth * nextPlayerX / 100}px, 0, 0) translateX(-50%)`;
+      }
+    };
     const createRespawnItem = (item: GameItem, currentItems: GameItem[]) => {
       const shouldSpawnGiant = stageRef.current >= 2 && stageRef.current < MAX_STAGE && item.type === 'poop'
         && !currentItems.some((currentItem) => currentItem.size === 'giant')
@@ -198,9 +215,9 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       const shouldSpawnCluster = stageRef.current === MAX_STAGE && item.type === 'poop'
         && !currentItems.some((currentItem) => currentItem.size === 'cluster')
         && Math.random() < CLUSTER_POOP_CHANCE;
-      if (shouldSpawnGiant) return makeItem(nextId.current++, item.type, 'giant', getLargePoopScale(stageRef.current));
-      if (shouldSpawnCluster) return makeItem(nextId.current++, item.type, 'cluster', 1.15);
-      return makeItem(nextId.current++, item.type);
+      if (shouldSpawnGiant) return makeItem(item.id, item.type, 'giant', getLargePoopScale(stageRef.current));
+      if (shouldSpawnCluster) return makeItem(item.id, item.type, 'cluster', 1.15);
+      return makeItem(item.id, item.type);
     };
     const tick = (time: number) => {
       const elapsedSeconds = previousTime === null ? 0 : Math.min((time - previousTime) / 1000, 0.1);
@@ -210,6 +227,11 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       playerXRef.current = nextPlayerX;
       const currentItems = itemsRef.current;
       let collectedCoins = 0;
+      let hasRespawned = false;
+      const respawnItem = (item: GameItem) => {
+        hasRespawned = true;
+        return createRespawnItem(item, currentItems);
+      };
       const nextItems = currentItems.map((item) => {
         const stageSpeedMultiplier = 1 + (stageRef.current - 1) * 0.18;
         const nextY = item.y + item.speed * 16 * stageSpeedMultiplier * frameScale;
@@ -218,9 +240,10 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         if (nearPlayer) {
           if (item.type === 'coin') {
             collectedCoins += 1;
+            setPlayerX(playerXRef.current);
             setCoinEffect(true);
             window.setTimeout(() => setCoinEffect(false), 350);
-            return createRespawnItem(item, currentItems);
+            return respawnItem(item);
           }
           const nextLives = livesRef.current - 1;
           const currentDamageEffectId = damageEffectId.current + 1;
@@ -230,18 +253,17 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
           livesRef.current = nextLives;
           setLives(nextLives);
           if (nextLives <= 0) setGameOver(true);
-          return createRespawnItem(item, currentItems);
+          return respawnItem(item);
         }
         const touchesPoopLine = item.y < BOTTOM_LINE_Y && nextY >= BOTTOM_LINE_Y;
         if (touchesPoopLine) {
           setFireEffect({ id: item.id, x: item.x });
           window.setTimeout(() => setFireEffect((current) => current?.id === item.id ? null : current), 320);
-          return createRespawnItem(item, currentItems);
+          return respawnItem(item);
         }
-        return nextY > 108 ? createRespawnItem(item, currentItems) : { ...item, y: nextY };
+        return nextY > 108 ? respawnItem(item) : { ...item, y: nextY };
       });
       let itemsToRender = nextItems;
-      let shouldRenderImmediately = false;
       if (collectedCoins > 0) {
         const nextScore = scoreRef.current + collectedCoins;
         scoreRef.current = nextScore;
@@ -256,7 +278,6 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
           directionRef.current = 0;
           itemsRef.current = [];
           itemsToRender = [];
-          shouldRenderImmediately = true;
           setGameOver(false);
           setCompleted(true);
         } else if (nextStage > stageRef.current) {
@@ -265,18 +286,14 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
           const stageItems = createStageItems(nextStage);
           itemsRef.current = stageItems;
           itemsToRender = stageItems;
-          shouldRenderImmediately = true;
         } else {
           itemsRef.current = nextItems;
         }
       } else {
         itemsRef.current = nextItems;
       }
-      if (shouldRenderImmediately || time - lastUiUpdateTime >= GAME_UI_UPDATE_INTERVAL_MS) {
-        setPlayerX(nextPlayerX);
-        setItems(itemsToRender);
-        lastUiUpdateTime = time;
-      }
+      syncDomPositions(itemsToRender, nextPlayerX);
+      if (hasRespawned || collectedCoins > 0) setItems(itemsToRender);
       frame = window.requestAnimationFrame(tick);
     };
     frame = window.requestAnimationFrame(tick);
@@ -290,6 +307,15 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     stageRef.current = 1;
     playerXRef.current = 50;
     setPlayerX(50);
+    itemElementRefs.current.forEach((element) => {
+      element.style.removeProperty('left');
+      element.style.removeProperty('top');
+      element.style.removeProperty('transform');
+    });
+    if (playerElementRef.current) {
+      playerElementRef.current.style.removeProperty('left');
+      playerElementRef.current.style.removeProperty('transform');
+    }
     const stageItems = createStageItems(1);
     itemsRef.current = stageItems;
     setItems(stageItems);
@@ -319,14 +345,20 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     <div className="auth-game-stage">STAGE {stage} / {MAX_STAGE}</div>
     <div className="auth-game-spawn-line" aria-hidden="true" />
     {coinEffect && <span className="auth-game-coin-burst" style={{ left: `${playerX}%` }} aria-hidden="true">+1 ✨</span>}
-    {items.map((item) => <Fragment key={item.id}>
-      <div className="auth-game-item" style={{ left: `${item.x}%`, top: `${item.y}%` }}>
+    {items.map((item) => <div
+      key={item.id}
+      ref={(element) => {
+        if (element) itemElementRefs.current.set(item.id, element);
+        else itemElementRefs.current.delete(item.id);
+      }}
+      className="auth-game-item"
+      style={{ '--item-left': `${item.x}%`, '--item-top': `${item.y}%` } as CSSProperties}
+    >
         {item.type === 'coin' ? <span className="auth-falling-item coin"><span className="auth-coin-icon" aria-hidden="true" /></span> : item.size === 'cluster' ? <span className="auth-falling-item poop cluster" aria-hidden="true"><img src={rainbowPoopUrl} alt="" /><img src={rainbowPoopUrl} alt="" /><img src={rainbowPoopUrl} alt="" /></span> : <img className={`auth-falling-item poop${item.size === 'giant' ? ' giant' : ''}`} style={item.size === 'giant' ? { width: `${32 * item.scale}px`, height: `${32 * item.scale}px` } : undefined} src={rainbowPoopUrl} alt="" />}
-      </div>
-    </Fragment>)}
+    </div>)}
     <div className="auth-poop-line" aria-hidden="true" />
     {fireEffect && <span className="auth-poop-fire" style={{ left: `${fireEffect.x}%` }} aria-hidden="true">🔥</span>}
-    <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="Player">🚽</div>
+    <div className="auth-game-player" ref={playerElementRef} style={{ '--player-left': `${playerX}%` } as CSSProperties} aria-label="Player">🚽</div>
     {damageEffect && <span className="auth-game-damage" style={{ left: `${damageEffect.x}%` }} aria-live="polite">
       <span>-1</span><span className="auth-broken-heart" role="img" aria-label="깨지는 하트" />
     </span>}

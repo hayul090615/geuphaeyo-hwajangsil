@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import rainbowPoopUrl from '../assets/rainbow-poop.png';
 
-type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; size: 'normal' | 'giant' | 'cluster'; scale: number };
+type GameItem = { id: number; type: 'poop' | 'coin'; x: number; spawnX: number; y: number; speed: number; wavePhase: number; waveAmplitude: number; size: 'normal' | 'giant' | 'cluster'; scale: number };
 const PLAYER_SPEED_PERCENT_PER_SECOND = 28;
 const MAX_STAGE = 5;
 const GIANT_POOP_CHANCE = 0.16;
@@ -67,8 +67,11 @@ const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = '
   size,
   scale,
   x: spawnX,
+  spawnX,
   y: SPAWN_LINE_Y,
   speed: 0.009 + Math.random() * 0.004,
+  wavePhase: Math.random() * Math.PI * 2,
+  waveAmplitude: 4.5 + Math.random() * 2.5,
 });
 const createStageItems = (stage: number) => {
   const counts = STAGE_ITEM_COUNTS[stage - 1];
@@ -111,7 +114,6 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const highScoreRef = useRef(highScore);
   const stageRef = useRef(1);
   const livesRef = useRef(3);
-  const invulnerableUntilRef = useRef(0);
   const itemsRef = useRef<GameItem[]>([]);
   const nextId = useRef(20);
   const damageEffectId = useRef(0);
@@ -207,9 +209,14 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       const currentItems = itemsRef.current;
       let collectedCoins = 0;
       const nextItems = currentItems.map((item) => {
-        const nextY = item.y + item.speed * 16;
+        const stageSpeedMultiplier = 1 + (stageRef.current - 1) * 0.18;
+        const nextY = item.y + item.speed * 16 * stageSpeedMultiplier;
+        const fallProgress = Math.max(0, Math.min(1, (nextY - SPAWN_LINE_Y) / (BOTTOM_LINE_Y - SPAWN_LINE_Y)));
+        const waveCycles = 3.7 + (stageRef.current - 1) * 0.45;
+        const waveAmplitude = item.waveAmplitude * (1 + (stageRef.current - 1) * 0.12);
+        const nextX = Math.max(SPAWN_MIN_X, Math.min(SPAWN_MAX_X, item.spawnX + Math.sin(fallProgress * Math.PI * waveCycles + item.wavePhase) * waveAmplitude));
         const nearPlayer = Math.abs(nextY - PLAYER_HIT_Y_CENTER) < getItemHitYRadius(item)
-          && Math.abs(item.x - playerXRef.current) < getItemHitXRadius(item);
+          && Math.abs(nextX - playerXRef.current) < getItemHitXRadius(item);
         if (nearPlayer) {
           if (item.type === 'coin') {
             collectedCoins += 1;
@@ -217,26 +224,23 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
             window.setTimeout(() => setCoinEffect(false), 350);
             return createRespawnItem(item, currentItems);
           }
-          if (time >= invulnerableUntilRef.current) {
-            const nextLives = livesRef.current - 1;
-            const currentDamageEffectId = damageEffectId.current + 1;
-            damageEffectId.current = currentDamageEffectId;
-            setDamageEffect({ id: currentDamageEffectId, x: playerXRef.current });
-            window.setTimeout(() => setDamageEffect((current) => current?.id === currentDamageEffectId ? null : current), 700);
-            livesRef.current = nextLives;
-            setLives(nextLives);
-            invulnerableUntilRef.current = time + 900;
-            if (nextLives <= 0) setGameOver(true);
-          }
+          const nextLives = livesRef.current - 1;
+          const currentDamageEffectId = damageEffectId.current + 1;
+          damageEffectId.current = currentDamageEffectId;
+          setDamageEffect({ id: currentDamageEffectId, x: playerXRef.current });
+          window.setTimeout(() => setDamageEffect((current) => current?.id === currentDamageEffectId ? null : current), 700);
+          livesRef.current = nextLives;
+          setLives(nextLives);
+          if (nextLives <= 0) setGameOver(true);
           return createRespawnItem(item, currentItems);
         }
         const touchesPoopLine = item.y < BOTTOM_LINE_Y && nextY >= BOTTOM_LINE_Y;
         if (touchesPoopLine) {
-          setFireEffect({ id: item.id, x: item.x });
+          setFireEffect({ id: item.id, x: nextX });
           window.setTimeout(() => setFireEffect((current) => current?.id === item.id ? null : current), 320);
           return createRespawnItem(item, currentItems);
         }
-        return nextY > 108 ? createRespawnItem(item, currentItems) : { ...item, y: nextY };
+        return nextY > 108 ? createRespawnItem(item, currentItems) : { ...item, x: nextX, y: nextY };
       });
       if (collectedCoins > 0) {
         const nextScore = scoreRef.current + collectedCoins;
@@ -278,7 +282,6 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     directionRef.current = 0;
     scoreRef.current = 0;
     livesRef.current = 3;
-    invulnerableUntilRef.current = 0;
     stageRef.current = 1;
     playerXRef.current = 50;
     setPlayerX(50);

@@ -6,6 +6,9 @@ const PLAYER_SPEED_PERCENT_PER_SECOND = 32;
 const MAX_STAGE = 5;
 const GIANT_POOP_CHANCE = 0.16;
 const CLUSTER_POOP_CHANCE = 0.2;
+const MAX_DIFFICULTY_SPEED_MULTIPLIER = 2.3;
+const MAX_DIFFICULTY_GIANT_CHANCE = 0.3;
+const MAX_DIFFICULTY_CLUSTER_CHANCE = 0.24;
 const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
 const START_RAINBOW_DURATION_MS = 1250;
 const PLAYER_MIN_X = 6;
@@ -20,11 +23,11 @@ const ITEM_HIT_X_RADIUS = 2.8;
 const COIN_HIT_X_RADIUS = 6;
 const COIN_HIT_Y_RADIUS = 3.5;
 const STAGE_ITEM_COUNTS = [
-  { poop: 5, coin: 6 },
-  { poop: 6, coin: 5 },
-  { poop: 7, coin: 4 },
-  { poop: 8, coin: 3 },
-  { poop: 10, coin: 2 },
+  { poop: 7, coin: 6 },
+  { poop: 8, coin: 5 },
+  { poop: 9, coin: 4 },
+  { poop: 10, coin: 3 },
+  { poop: 12, coin: 2 },
 ] as const;
 const getLargePoopScale = (stage: number) => stage === 2 ? 2 : stage === 3 ? 2.5 : 3;
 const POOP_EXPLOSION_PARTICLES = [
@@ -92,6 +95,22 @@ const createStageItems = (stage: number) => {
   }
   return items;
 };
+const createMaxDifficultyItems = () => {
+  const types: GameItem['type'][] = [
+    ...Array.from({ length: 16 }, () => 'poop' as const),
+    ...Array.from({ length: 2 }, () => 'coin' as const),
+  ];
+  const spawnXs = getSpreadSpawnXs(types.length);
+  const spawnYs = getStaggeredSpawnYs(types.length);
+  const items = types.sort(() => Math.random() - 0.5).map((type, id) => makeItem(id, type, 'normal', 1, spawnXs[id], spawnYs[id]));
+  return items.map((item) => {
+    if (item.type !== 'poop') return item;
+    const roll = Math.random();
+    if (roll < MAX_DIFFICULTY_CLUSTER_CHANCE) return makeItem(item.id, 'poop', 'cluster', 1.15, item.x, item.y);
+    if (roll < MAX_DIFFICULTY_CLUSTER_CHANCE + MAX_DIFFICULTY_GIANT_CHANCE) return makeItem(item.id, 'poop', 'giant', 3, item.x, item.y);
+    return item;
+  });
+};
 type AuthSideGameProps = { onExit?: () => void };
 
 export default function AuthSideGame({ onExit }: AuthSideGameProps) {
@@ -108,12 +127,14 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const [gameOver, setGameOver] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [isStarting, setIsStarting] = useState(true);
+  const [maxDifficulty, setMaxDifficulty] = useState(false);
   const playerXRef = useRef(50);
   const directionRef = useRef<-1 | 0 | 1>(0);
   const scoreRef = useRef(0);
   const highScoreRef = useRef(highScore);
   const stageRef = useRef(1);
   const livesRef = useRef(3);
+  const maxDifficultyRef = useRef(false);
   const itemsRef = useRef<GameItem[]>(items);
   const damageEffectId = useRef(0);
   const pointerStartRef = useRef<{ id: number; x: number; playerX: number } | null>(null);
@@ -209,6 +230,11 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       }
     };
     const createRespawnItem = (item: GameItem, currentItems: GameItem[]) => {
+      if (maxDifficultyRef.current && item.type === 'poop') {
+        const roll = Math.random();
+        if (roll < MAX_DIFFICULTY_CLUSTER_CHANCE) return makeItem(item.id, 'poop', 'cluster', 1.15);
+        if (roll < MAX_DIFFICULTY_CLUSTER_CHANCE + MAX_DIFFICULTY_GIANT_CHANCE) return makeItem(item.id, 'poop', 'giant', 3);
+      }
       const shouldSpawnGiant = stageRef.current >= 2 && stageRef.current < MAX_STAGE && item.type === 'poop'
         && !currentItems.some((currentItem) => currentItem.size === 'giant')
         && Math.random() < GIANT_POOP_CHANCE;
@@ -233,7 +259,9 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         return createRespawnItem(item, currentItems);
       };
       const nextItems = currentItems.map((item) => {
-        const stageSpeedMultiplier = 1 + (stageRef.current - 1) * 0.26;
+        const stageSpeedMultiplier = maxDifficultyRef.current
+          ? MAX_DIFFICULTY_SPEED_MULTIPLIER
+          : 1 + (stageRef.current - 1) * 0.26;
         const nextY = item.y + item.speed * 16 * stageSpeedMultiplier * frameScale;
         const nearPlayer = Math.abs(nextY - PLAYER_HIT_Y_CENTER) < getItemHitYRadius(item)
           && Math.abs(item.x - playerXRef.current) < getItemHitXRadius(item);
@@ -274,7 +302,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
           saveHighScore(nextScore);
         }
         const nextStage = Math.min(MAX_STAGE, Math.floor(nextScore / 10) + 1);
-        if (nextScore >= MAX_STAGE * 10) {
+        if (!maxDifficultyRef.current && nextScore >= MAX_STAGE * 10) {
           directionRef.current = 0;
           itemsRef.current = [];
           itemsToRender = [];
@@ -302,6 +330,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
 
   const restart = () => {
     directionRef.current = 0;
+    maxDifficultyRef.current = false;
     scoreRef.current = 0;
     livesRef.current = 3;
     stageRef.current = 1;
@@ -328,7 +357,25 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     setDamageEffect(null);
     setFireEffect(null);
     setCompleted(false);
+    setMaxDifficulty(false);
     setIsStarting(true);
+  };
+  const continueWithMaxDifficulty = () => {
+    const maxItems = createMaxDifficultyItems();
+    directionRef.current = 0;
+    maxDifficultyRef.current = true;
+    itemsRef.current = maxItems;
+    livesRef.current = 3;
+    stageRef.current = MAX_STAGE;
+    setMaxDifficulty(true);
+    setStage(MAX_STAGE);
+    setLives(3);
+    setItems(maxItems);
+    setGameOver(false);
+    setCompleted(false);
+    setPaused(false);
+    setDamageEffect(null);
+    setFireEffect(null);
   };
   const togglePause = () => {
     if (gameOver || completed || isStarting) return;
@@ -342,7 +389,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     <div className="auth-game-lives" aria-label={`생명 ${lives}개`}>❤️ × {lives}</div>
     <div className={`auth-game-score${coinEffect ? ' is-coin-pop' : ''}`}><span className="auth-coin-icon" aria-hidden="true" /> {score}</div>
     <div className="auth-game-best">최고기록 {highScore}</div>
-    <div className="auth-game-stage">STAGE {stage} / {MAX_STAGE}</div>
+    <div className="auth-game-stage">{maxDifficulty ? 'MAX DIFFICULTY' : `STAGE ${stage} / ${MAX_STAGE}`}</div>
     <div className="auth-game-spawn-line" aria-hidden="true" />
     {coinEffect && <span className="auth-game-coin-burst" style={{ left: `${playerX}%` }} aria-hidden="true">+1 ✨</span>}
     {items.map((item) => <div
@@ -377,7 +424,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       </div>
       <strong>수고하셨습니다!</strong>
       <span>5단계를 모두 완료했어요 🎉</span>
-      <div><button type="button" onClick={restart}>다시하기</button><button type="button" onClick={onExit}>종료하기</button></div>
+      <div><button className="auth-game-continue" type="button" onClick={continueWithMaxDifficulty}>이어하기</button><button type="button" onClick={restart}>다시하기</button><button type="button" onClick={onExit}>종료하기</button></div>
     </div>}
     {gameOver && <div className="auth-game-over" role="dialog" aria-modal="true" aria-label="게임 종료"><strong>똥에 맞았어요!</strong><span>점수: {score}</span><div><button type="button" onClick={restart}>다시하기</button><button type="button" onClick={onExit}>종료하기</button></div></div>}
   </div>;

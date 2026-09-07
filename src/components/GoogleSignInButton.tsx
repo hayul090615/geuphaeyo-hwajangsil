@@ -84,6 +84,16 @@ export default function GoogleSignInButton({ onCredential, onError }: GoogleSign
           client_id: clientId,
           callback: (response) => onCredential(response.credential),
         });
+        containerRef.current.replaceChildren();
+        window.google.accounts.id.renderButton(containerRef.current, {
+          type: "standard",
+          theme: "outline",
+          size: "large",
+          text: "signin_with",
+          shape: "rectangular",
+          logo_alignment: "left",
+          width: 360,
+        });
         setIsLoading(false);
       })
       .catch((loadError) => {
@@ -131,7 +141,6 @@ export default function GoogleSignInButton({ onCredential, onError }: GoogleSign
     <div className="google-auth-wrap">
       {isLoading && <span className="google-auth-loading">Google 로그인 준비 중...</span>}
       <div ref={containerRef} className="google-auth-button">
-        <button type="button" className="google-auth-generic-button" disabled={isLoading} onClick={() => window.google?.accounts.id.prompt()}>G&nbsp;&nbsp;Google로 로그인</button>
       </div>
     </div>
   );

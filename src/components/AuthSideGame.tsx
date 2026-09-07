@@ -23,11 +23,11 @@ const ITEM_HIT_X_RADIUS = 2.8;
 const COIN_HIT_X_RADIUS = 6;
 const COIN_HIT_Y_RADIUS = 3.5;
 const STAGE_ITEM_COUNTS = [
-  { poop: 7, coin: 6 },
-  { poop: 8, coin: 5 },
-  { poop: 9, coin: 4 },
-  { poop: 10, coin: 3 },
-  { poop: 12, coin: 2 },
+  { poop: 8, coin: 6 },
+  { poop: 10, coin: 5 },
+  { poop: 11, coin: 4 },
+  { poop: 12, coin: 3 },
+  { poop: 14, coin: 2 },
 ] as const;
 const getLargePoopScale = (stage: number) => stage === 2 ? 2 : stage === 3 ? 2.5 : 3;
 const POOP_EXPLOSION_PARTICLES = [
@@ -98,7 +98,7 @@ const createStageItems = (stage: number) => {
 };
 const createMaxDifficultyItems = () => {
   const types: GameItem['type'][] = [
-    ...Array.from({ length: 16 }, () => 'poop' as const),
+    ...Array.from({ length: 20 }, () => 'poop' as const),
     ...Array.from({ length: 2 }, () => 'coin' as const),
   ];
   const spawnXs = getSpreadSpawnXs(types.length);

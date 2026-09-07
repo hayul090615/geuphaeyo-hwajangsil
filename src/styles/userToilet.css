@@ -573,3 +573,37 @@
     font-size: 23px;
   }
 }
+
+/* Center the login card on the web while keeping the introduction on wide screens. */
+@media (min-width: 1401px) {
+  .auth-page {
+    grid-template-columns: minmax(0, 1fr) minmax(440px, 480px) minmax(0, 1fr);
+    gap: clamp(32px, 4vw, 68px);
+  }
+
+  .auth-intro {
+    grid-column: 1;
+    justify-self: end;
+    width: min(100%, 660px);
+  }
+
+  .auth-page .auth-card {
+    grid-column: 2;
+    justify-self: center;
+  }
+}
+
+@media (max-width: 1400px) {
+  .auth-page {
+    display: flex;
+    justify-content: center;
+  }
+
+  .auth-intro {
+    display: none;
+  }
+
+  .auth-page .auth-card {
+    grid-column: auto;
+  }
+}

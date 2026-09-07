@@ -40,6 +40,7 @@ const SEARCH_DEBOUNCE_MS = 500;
 const SEOUL_MAP_LEVEL = 8;
 const NEARBY_MAP_LEVEL = 5;
 const MAX_AUTO_LOCATION_ACCURACY_METERS = 150;
+const ARRIVAL_DISTANCE_METERS = 40;
 const MAX_SEARCH_CACHE_ENTRIES = 24;
 const DIRECTIONS_MODE_OPTIONS: Array<{ mode: DirectionsMode; icon: string; label: string }> = [
   { mode: 'walk', icon: '🚶', label: '도보' },
@@ -223,6 +224,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   const searchTimer = useRef<number | null>(null);
   const searchCache = useRef(new globalThis.Map<string, MapToilet[]>());
   const directionsTargetRef = useRef<MapToilet | null>(null);
+  const stopDirectionsRef = useRef<() => void>(() => undefined);
   const activeGoingToiletRef = useRef<string | null>(null);
   const directionsSequence = useRef(0);
   const viewportKeyRef = useRef('');
@@ -566,6 +568,32 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     if (toiletId) void releaseGoing(toiletId).catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    if (!directionsTarget || isSelectingOrigin || !navigator.geolocation) return undefined;
+
+    let hasArrived = false;
+    const watchId = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        const nextPosition: Position = {
+          lat: coords.latitude,
+          lng: coords.longitude,
+          accuracy: coords.accuracy,
+        };
+        setCurrentPosition(nextPosition);
+        if (!hasArrived && getDistanceMeters(nextPosition, { lat: directionsTarget.lat, lng: directionsTarget.lng }) <= ARRIVAL_DISTANCE_METERS) {
+          hasArrived = true;
+          stopDirectionsRef.current();
+        }
+      },
+      () => {
+        // 위치 갱신에 실패해도 기존 경로와 수동 출발 위치 선택은 계속 사용할 수 있습니다.
+      },
+      { enableHighAccuracy: true, maximumAge: 3_000, timeout: 10_000 },
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [directionsTarget, isSelectingOrigin]);
+
   const getPeopleGoing = (toilet: MapToilet) => goingCounts[toilet.id] ?? 0;
 
   const activateGoing = (toiletId: string) => {
@@ -734,7 +762,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     );
   };
 
-  const stopDirections = () => {
+  const stopDirections = (message = '현재 위치 주변의 화장실을 다시 찾는 중입니다.') => {
     deactivateGoing();
     directionsSequence.current += 1;
     directionsTargetRef.current = null;
@@ -745,11 +773,12 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     setRouteMessage('');
     setSelectedToiletId(null);
     setMapLevel(NEARBY_MAP_LEVEL);
-    setStatusMessage('현재 위치 주변의 화장실을 다시 찾는 중입니다.');
+    setStatusMessage(message);
     map?.setLevel(NEARBY_MAP_LEVEL);
     map?.panTo(new kakao.maps.LatLng(center.lat, center.lng));
     scheduleMapSearch();
   };
+  stopDirectionsRef.current = () => stopDirections('화장실에 도착했습니다. 길찾기를 종료했습니다.');
 
   const changeDirectionsMode = (mode: DirectionsMode) => {
     setDirectionsMode(mode);
@@ -852,7 +881,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                 {isSelectingOrigin ? '지도에서 선택 중' : '출발 위치 조정'}
               </button>
               <button type="button" onClick={toggleSkyview}>{isSkyview ? '일반지도' : '위성뷰'}</button>
-              <button type="button" onClick={stopDirections}>길찾기 종료</button>
+              <button type="button" onClick={() => stopDirections()}>길찾기 종료</button>
             </>
           ) : (
             <>

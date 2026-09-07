@@ -7,7 +7,7 @@ const MAX_STAGE = 5;
 const GIANT_POOP_CHANCE = 0.16;
 const CLUSTER_POOP_CHANCE = 0.2;
 const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
-const START_BURST_DURATION_MS = 1250;
+const START_RAINBOW_DURATION_MS = 1250;
 const PLAYER_MIN_X = 6;
 const PLAYER_MAX_X = 94;
 const SPAWN_MIN_X = 3;
@@ -33,6 +33,7 @@ const POOP_EXPLOSION_PARTICLES = [
   { left: 88, top: 98 }, { left: 70, top: 99 }, { left: 52, top: 98 }, { left: 34, top: 99 }, { left: 17, top: 98 },
   { left: 2, top: 82 }, { left: 2, top: 62 }, { left: 2, top: 38 },
 ].map((particle, index) => ({ ...particle, delay: (index % 5) * 0.04 }));
+const RAINBOW_COLORS = ['#ff4d6d', '#ff9f43', '#ffe066', '#58d68d', '#4dabf7', '#6c5ce7', '#b967ff'];
 const readHighScore = () => {
   try {
     return Number(window.localStorage.getItem(HIGH_SCORE_KEY)) || 0;
@@ -117,7 +118,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
 
   useEffect(() => {
     if (!isStarting) return undefined;
-    const timeout = window.setTimeout(() => setIsStarting(false), START_BURST_DURATION_MS);
+    const timeout = window.setTimeout(() => setIsStarting(false), START_RAINBOW_DURATION_MS);
     return () => window.clearTimeout(timeout);
   }, [isStarting]);
 
@@ -311,15 +312,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     <div className="auth-poop-line" aria-hidden="true" />
     {fireEffect && <span className="auth-poop-fire" style={{ left: `${fireEffect.x}%` }} aria-hidden="true">🔥</span>}
     <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="Player">🚽</div>
-    {isStarting && <div className="auth-game-start-burst" aria-label="게임 시작 효과">
-      <div className="auth-poop-explosion" aria-hidden="true">
-        {POOP_EXPLOSION_PARTICLES.map((particle, index) => <img
-          key={index}
-          src={rainbowPoopUrl}
-          alt=""
-          style={{ '--explosion-left': `${particle.left}%`, '--explosion-top': `${particle.top}%`, '--explosion-delay': `${particle.delay}s` } as CSSProperties}
-        />)}
-      </div>
+    {isStarting && <div className="auth-game-start-rainbow" aria-label="게임 시작 무지개">
+      {RAINBOW_COLORS.map((color, index) => <span key={color} style={{ '--rainbow-color': color, '--rainbow-band': `${index * 7}%` } as CSSProperties} />)}
     </div>}
     {paused && !gameOver && <div className="auth-game-paused" aria-live="polite">일시정지</div>}
     {completed && <div className="auth-game-complete" role="dialog" aria-modal="true" aria-label="게임 완료">

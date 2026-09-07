@@ -319,7 +319,9 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     <div className="auth-poop-line" aria-hidden="true" />
     {fireEffect && <span className="auth-poop-fire" style={{ left: `${fireEffect.x}%` }} aria-hidden="true">🔥</span>}
     <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="Player">🚽</div>
-    {damageEffect && <span className="auth-game-damage" style={{ left: `${damageEffect.x}%` }} aria-live="polite">-1 ❤️</span>}
+    {damageEffect && <span className="auth-game-damage" style={{ left: `${damageEffect.x}%` }} aria-live="polite">
+      <span>-1</span><span className="auth-broken-heart" role="img" aria-label="깨지는 하트" />
+    </span>}
     {isStarting && <div className="auth-game-start-rainbow" aria-label="게임 시작 무지개">
       {RAINBOW_COLORS.map((color, index) => <span key={color} style={{ '--rainbow-color': color, '--rainbow-band': `${index * 7}%` } as CSSProperties} />)}
     </div>}

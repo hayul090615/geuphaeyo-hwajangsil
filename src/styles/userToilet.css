@@ -75,6 +75,12 @@
 .auth-side-game .auth-game-stage{top:43px}
 @media (max-width:900px){.auth-side-game .auth-game-best{top:42px;left:7px;font-size:9px}.auth-side-game .auth-game-stage{top:43px}}
 @media (max-width:760px){.auth-side-game .auth-game-best{top:38px;left:5px;font-size:8px}.auth-side-game .auth-game-stage{top:40px;font-size:8px}}
-.auth-game-damage{position:absolute;bottom:calc(7% + 44px);z-index:8;transform:translateX(-50%);color:#e04452;font-size:16px;font-weight:900;text-shadow:0 1px 3px #fff,0 0 8px #ff8d9a;animation:auth-damage-pop .7s ease-out both;pointer-events:none;white-space:nowrap}
+.auth-game-damage{position:absolute;bottom:calc(7% + 44px);z-index:8;display:inline-flex;align-items:center;gap:5px;transform:translateX(-50%);color:#e04452;font-size:16px;font-weight:900;text-shadow:0 1px 3px #fff,0 0 8px #ff8d9a;animation:auth-damage-pop .7s ease-out both;pointer-events:none;white-space:nowrap}
+.auth-broken-heart{position:relative;display:inline-block;width:27px;height:25px;color:#e04452;filter:drop-shadow(0 1px 2px #fff);vertical-align:middle}
+.auth-broken-heart::before,.auth-broken-heart::after{position:absolute;top:0;left:0;font:700 27px/25px Arial,sans-serif;content:'♥';transform-origin:center bottom}
+.auth-broken-heart::before{clip-path:polygon(0 0,50% 0,43% 18%,53% 37%,43% 58%,55% 100%,0 100%);animation:auth-heart-break-left .7s ease-out both}
+.auth-broken-heart::after{clip-path:polygon(50% 0,100% 0,100% 100%,55% 100%,43% 58%,53% 37%,43% 18%);animation:auth-heart-break-right .7s ease-out both}
 @keyframes auth-damage-pop{0%{opacity:0;transform:translate(-50%,10px) scale(.7)}30%{opacity:1;transform:translate(-50%,0) scale(1.15)}100%{opacity:0;transform:translate(-50%,-28px) scale(1)}}
+@keyframes auth-heart-break-left{0%,28%{transform:translate(0,0) rotate(0)}100%{transform:translate(-5px,5px) rotate(-16deg)}}
+@keyframes auth-heart-break-right{0%,28%{transform:translate(0,0) rotate(0)}100%{transform:translate(5px,5px) rotate(16deg)}}
 @media (max-width:760px){.auth-game-damage{bottom:calc(7% + 30px);font-size:12px}}

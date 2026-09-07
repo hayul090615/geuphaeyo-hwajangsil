@@ -578,7 +578,7 @@
 @media (min-width: 1201px) {
   .auth-page {
     grid-template-columns: minmax(0, 1fr) minmax(440px, 480px) minmax(0, 1fr);
-    gap: 24px;
+    gap: clamp(52px, 4vw, 72px);
     padding-left: clamp(24px, 4vw, 64px);
     padding-right: clamp(24px, 4vw, 64px);
   }

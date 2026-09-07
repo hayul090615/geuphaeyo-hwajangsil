@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import rainbowPoopUrl from '../assets/rainbow-poop.png';
 
-type GameItem = { id: number; type: 'poop' | 'coin'; x: number; spawnX: number; y: number; speed: number; wavePhase: number; waveAmplitude: number; size: 'normal' | 'giant' | 'cluster'; scale: number };
+type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; size: 'normal' | 'giant' | 'cluster'; scale: number };
 const PLAYER_SPEED_PERCENT_PER_SECOND = 28;
 const MAX_STAGE = 5;
 const GIANT_POOP_CHANCE = 0.16;
@@ -55,23 +55,22 @@ const getSpreadSpawnXs = (count: number) => Array.from({ length: count }, (_, in
   const segmentPadding = Math.min(2, segmentWidth * 0.18);
   return segmentStart + segmentPadding + Math.random() * Math.max(0, segmentWidth - segmentPadding * 2);
 }).sort(() => Math.random() - 0.5);
+const getStaggeredSpawnYs = (count: number) => Array.from({ length: count }, (_, index) => SPAWN_LINE_Y - index * 6 - Math.random() * 3)
+  .sort(() => Math.random() - 0.5);
 const getItemHitXRadius = (item: GameItem) => item.type === 'coin' ? COIN_HIT_X_RADIUS : item.size === 'giant'
   ? Math.min(5.6, ITEM_HIT_X_RADIUS * item.scale)
   : item.size === 'cluster' ? ITEM_HIT_X_RADIUS * 1.5 : ITEM_HIT_X_RADIUS;
 const getItemHitYRadius = (item: GameItem) => item.type === 'coin' ? COIN_HIT_Y_RADIUS : item.size === 'giant'
   ? Math.min(4.5, PLAYER_HIT_Y_RADIUS * item.scale)
   : item.size === 'cluster' ? PLAYER_HIT_Y_RADIUS * 1.5 : PLAYER_HIT_Y_RADIUS;
-const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = 'normal', scale = 1, spawnX = getRandomSpawnX()): GameItem => ({
+const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = 'normal', scale = 1, spawnX = getRandomSpawnX(), spawnY = SPAWN_LINE_Y): GameItem => ({
   id,
   type,
   size,
   scale,
   x: spawnX,
-  spawnX,
-  y: SPAWN_LINE_Y,
+  y: spawnY,
   speed: 0.009 + Math.random() * 0.004,
-  wavePhase: Math.random() * Math.PI * 2,
-  waveAmplitude: 4.5 + Math.random() * 2.5,
 });
 const createStageItems = (stage: number) => {
   const counts = STAGE_ITEM_COUNTS[stage - 1];
@@ -80,15 +79,16 @@ const createStageItems = (stage: number) => {
     ...Array.from({ length: counts.coin }, () => 'coin' as const),
   ];
   const spawnXs = getSpreadSpawnXs(types.length);
-  const items = types.sort(() => Math.random() - 0.5).map((type, id) => makeItem(id, type, 'normal', 1, spawnXs[id]));
+  const spawnYs = getStaggeredSpawnYs(types.length);
+  const items = types.sort(() => Math.random() - 0.5).map((type, id) => makeItem(id, type, 'normal', 1, spawnXs[id], spawnYs[id]));
   const poopItems = items.filter((item) => item.type === 'poop');
   if (stage >= 2 && stage <= 4 && poopItems.length > 0) {
     const target = poopItems[Math.floor(Math.random() * poopItems.length)];
-    return items.map((item) => item.id === target.id ? makeItem(item.id, 'poop', 'giant', getLargePoopScale(stage)) : item);
+    return items.map((item) => item.id === target.id ? makeItem(item.id, 'poop', 'giant', getLargePoopScale(stage), item.x, item.y) : item);
   }
   if (stage === MAX_STAGE && poopItems.length > 0) {
     const target = poopItems[Math.floor(Math.random() * poopItems.length)];
-    return items.map((item) => item.id === target.id ? makeItem(item.id, 'poop', 'cluster', 1.15) : item);
+    return items.map((item) => item.id === target.id ? makeItem(item.id, 'poop', 'cluster', 1.15, item.x, item.y) : item);
   }
   return items;
 };
@@ -211,12 +211,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       const nextItems = currentItems.map((item) => {
         const stageSpeedMultiplier = 1 + (stageRef.current - 1) * 0.18;
         const nextY = item.y + item.speed * 16 * stageSpeedMultiplier;
-        const fallProgress = Math.max(0, Math.min(1, (nextY - SPAWN_LINE_Y) / (BOTTOM_LINE_Y - SPAWN_LINE_Y)));
-        const waveCycles = 3.7 + (stageRef.current - 1) * 0.45;
-        const waveAmplitude = item.waveAmplitude * (1 + (stageRef.current - 1) * 0.12);
-        const nextX = Math.max(SPAWN_MIN_X, Math.min(SPAWN_MAX_X, item.spawnX + Math.sin(fallProgress * Math.PI * waveCycles + item.wavePhase) * waveAmplitude));
         const nearPlayer = Math.abs(nextY - PLAYER_HIT_Y_CENTER) < getItemHitYRadius(item)
-          && Math.abs(nextX - playerXRef.current) < getItemHitXRadius(item);
+          && Math.abs(item.x - playerXRef.current) < getItemHitXRadius(item);
         if (nearPlayer) {
           if (item.type === 'coin') {
             collectedCoins += 1;
@@ -236,11 +232,11 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         }
         const touchesPoopLine = item.y < BOTTOM_LINE_Y && nextY >= BOTTOM_LINE_Y;
         if (touchesPoopLine) {
-          setFireEffect({ id: item.id, x: nextX });
+          setFireEffect({ id: item.id, x: item.x });
           window.setTimeout(() => setFireEffect((current) => current?.id === item.id ? null : current), 320);
           return createRespawnItem(item, currentItems);
         }
-        return nextY > 108 ? createRespawnItem(item, currentItems) : { ...item, x: nextX, y: nextY };
+        return nextY > 108 ? createRespawnItem(item, currentItems) : { ...item, y: nextY };
       });
       if (collectedCoins > 0) {
         const nextScore = scoreRef.current + collectedCoins;

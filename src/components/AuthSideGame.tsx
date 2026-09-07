@@ -99,6 +99,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const [lives, setLives] = useState(3);
   const [playerX, setPlayerX] = useState(50);
   const [coinEffect, setCoinEffect] = useState(false);
+  const [damageEffect, setDamageEffect] = useState<{ id: number; x: number } | null>(null);
   const [paused, setPaused] = useState(false);
   const [fireEffect, setFireEffect] = useState<{ id: number; x: number } | null>(null);
   const [gameOver, setGameOver] = useState(false);
@@ -113,6 +114,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const invulnerableUntilRef = useRef(0);
   const itemsRef = useRef<GameItem[]>([]);
   const nextId = useRef(20);
+  const damageEffectId = useRef(0);
   const pointerStartRef = useRef<{ id: number; x: number; playerX: number } | null>(null);
   itemsRef.current = items;
 
@@ -217,6 +219,10 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
           }
           if (time >= invulnerableUntilRef.current) {
             const nextLives = livesRef.current - 1;
+            const currentDamageEffectId = damageEffectId.current + 1;
+            damageEffectId.current = currentDamageEffectId;
+            setDamageEffect({ id: currentDamageEffectId, x: playerXRef.current });
+            window.setTimeout(() => setDamageEffect((current) => current?.id === currentDamageEffectId ? null : current), 700);
             livesRef.current = nextLives;
             setLives(nextLives);
             invulnerableUntilRef.current = time + 900;
@@ -285,6 +291,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     setPaused(false);
     setGameOver(false);
     setCoinEffect(false);
+    setDamageEffect(null);
     setFireEffect(null);
     setCompleted(false);
     setIsStarting(true);
@@ -312,6 +319,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     <div className="auth-poop-line" aria-hidden="true" />
     {fireEffect && <span className="auth-poop-fire" style={{ left: `${fireEffect.x}%` }} aria-hidden="true">🔥</span>}
     <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="Player">🚽</div>
+    {damageEffect && <span className="auth-game-damage" style={{ left: `${damageEffect.x}%` }} aria-live="polite">-1 ❤️</span>}
     {isStarting && <div className="auth-game-start-rainbow" aria-label="게임 시작 무지개">
       {RAINBOW_COLORS.map((color, index) => <span key={color} style={{ '--rainbow-color': color, '--rainbow-band': `${index * 7}%` } as CSSProperties} />)}
     </div>}

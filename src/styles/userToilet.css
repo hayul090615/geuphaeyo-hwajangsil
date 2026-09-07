@@ -574,11 +574,13 @@
   }
 }
 
-/* Center the login card on the web while keeping the introduction on wide screens. */
-@media (min-width: 1401px) {
+/* Keep the login card centered with equal left and right breathing room. */
+@media (min-width: 1201px) {
   .auth-page {
     grid-template-columns: minmax(0, 1fr) minmax(440px, 480px) minmax(0, 1fr);
-    gap: clamp(32px, 4vw, 68px);
+    gap: 24px;
+    padding-left: clamp(24px, 4vw, 64px);
+    padding-right: clamp(24px, 4vw, 64px);
   }
 
   .auth-intro {
@@ -593,10 +595,14 @@
   }
 }
 
-@media (max-width: 1400px) {
+@media (min-width: 761px) and (max-width: 1200px) {
   .auth-page {
     display: flex;
+    align-items: center;
     justify-content: center;
+    gap: 0;
+    padding-left: 24px;
+    padding-right: 24px;
   }
 
   .auth-intro {

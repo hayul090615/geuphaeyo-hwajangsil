@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import rainbowPoopUrl from '../assets/rainbow-poop.png';
 
-type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; size: 'normal' | 'giant' | 'cluster'; scale: number };
+type GameItem = { id: number; type: 'poop' | 'coin'; x: number; y: number; speed: number; size: 'normal' | 'giant' | 'cluster'; scale: number; spawnDelay: number };
 const PLAYER_SPEED_PERCENT_PER_SECOND = 32;
 const MAX_STAGE = 5;
 const GIANT_POOP_CHANCE = 0.16;
@@ -58,7 +58,7 @@ const getSpreadSpawnXs = (count: number) => Array.from({ length: count }, (_, in
   const segmentPadding = Math.min(2, segmentWidth * 0.18);
   return segmentStart + segmentPadding + Math.random() * Math.max(0, segmentWidth - segmentPadding * 2);
 }).sort(() => Math.random() - 0.5);
-const getStaggeredSpawnYs = (count: number) => Array.from({ length: count }, (_, index) => SPAWN_LINE_Y + index * 4 + Math.random() * 2)
+const getStaggeredSpawnDelays = (count: number) => Array.from({ length: count }, (_, index) => index * 0.42 + Math.random() * 0.16)
   .sort(() => Math.random() - 0.5);
 const getItemHitXRadius = (item: GameItem) => item.type === 'coin' ? COIN_HIT_X_RADIUS : item.size === 'giant'
   ? Math.min(5.6, ITEM_HIT_X_RADIUS * item.scale)
@@ -66,7 +66,7 @@ const getItemHitXRadius = (item: GameItem) => item.type === 'coin' ? COIN_HIT_X_
 const getItemHitYRadius = (item: GameItem) => item.type === 'coin' ? COIN_HIT_Y_RADIUS : item.size === 'giant'
   ? Math.min(4.5, PLAYER_HIT_Y_RADIUS * item.scale)
   : item.size === 'cluster' ? PLAYER_HIT_Y_RADIUS * 1.5 : PLAYER_HIT_Y_RADIUS;
-const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = 'normal', scale = 1, spawnX = getRandomSpawnX(), spawnY = SPAWN_LINE_Y): GameItem => ({
+const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = 'normal', scale = 1, spawnX = getRandomSpawnX(), spawnY = SPAWN_LINE_Y, spawnDelay = 0): GameItem => ({
   id,
   type,
   size,
@@ -74,6 +74,7 @@ const makeItem = (id: number, type: GameItem['type'], size: GameItem['size'] = '
   x: spawnX,
   y: spawnY,
   speed: 0.012 + Math.random() * 0.005,
+  spawnDelay,
 });
 const createStageItems = (stage: number) => {
   const counts = STAGE_ITEM_COUNTS[stage - 1];
@@ -82,16 +83,16 @@ const createStageItems = (stage: number) => {
     ...Array.from({ length: counts.coin }, () => 'coin' as const),
   ];
   const spawnXs = getSpreadSpawnXs(types.length);
-  const spawnYs = getStaggeredSpawnYs(types.length);
-  const items = types.sort(() => Math.random() - 0.5).map((type, id) => makeItem(id, type, 'normal', 1, spawnXs[id], spawnYs[id]));
+  const spawnDelays = getStaggeredSpawnDelays(types.length);
+  const items = types.sort(() => Math.random() - 0.5).map((type, id) => makeItem(id, type, 'normal', 1, spawnXs[id], SPAWN_LINE_Y, spawnDelays[id]));
   const poopItems = items.filter((item) => item.type === 'poop');
   if (stage >= 2 && stage <= 4 && poopItems.length > 0) {
     const target = poopItems[Math.floor(Math.random() * poopItems.length)];
-    return items.map((item) => item.id === target.id ? makeItem(item.id, 'poop', 'giant', getLargePoopScale(stage), item.x, item.y) : item);
+    return items.map((item) => item.id === target.id ? makeItem(item.id, 'poop', 'giant', getLargePoopScale(stage), item.x, item.y, item.spawnDelay) : item);
   }
   if (stage === MAX_STAGE && poopItems.length > 0) {
     const target = poopItems[Math.floor(Math.random() * poopItems.length)];
-    return items.map((item) => item.id === target.id ? makeItem(item.id, 'poop', 'cluster', 1.15, item.x, item.y) : item);
+    return items.map((item) => item.id === target.id ? makeItem(item.id, 'poop', 'cluster', 1.15, item.x, item.y, item.spawnDelay) : item);
   }
   return items;
 };
@@ -101,13 +102,13 @@ const createMaxDifficultyItems = () => {
     ...Array.from({ length: 2 }, () => 'coin' as const),
   ];
   const spawnXs = getSpreadSpawnXs(types.length);
-  const spawnYs = getStaggeredSpawnYs(types.length);
-  const items = types.sort(() => Math.random() - 0.5).map((type, id) => makeItem(id, type, 'normal', 1, spawnXs[id], spawnYs[id]));
+  const spawnDelays = getStaggeredSpawnDelays(types.length);
+  const items = types.sort(() => Math.random() - 0.5).map((type, id) => makeItem(id, type, 'normal', 1, spawnXs[id], SPAWN_LINE_Y, spawnDelays[id]));
   return items.map((item) => {
     if (item.type !== 'poop') return item;
     const roll = Math.random();
-    if (roll < MAX_DIFFICULTY_CLUSTER_CHANCE) return makeItem(item.id, 'poop', 'cluster', 1.15, item.x, item.y);
-    if (roll < MAX_DIFFICULTY_CLUSTER_CHANCE + MAX_DIFFICULTY_GIANT_CHANCE) return makeItem(item.id, 'poop', 'giant', 3, item.x, item.y);
+    if (roll < MAX_DIFFICULTY_CLUSTER_CHANCE) return makeItem(item.id, 'poop', 'cluster', 1.15, item.x, item.y, item.spawnDelay);
+    if (roll < MAX_DIFFICULTY_CLUSTER_CHANCE + MAX_DIFFICULTY_GIANT_CHANCE) return makeItem(item.id, 'poop', 'giant', 3, item.x, item.y, item.spawnDelay);
     return item;
   });
 };
@@ -220,6 +221,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       currentItems.forEach((item) => {
         const element = itemElementRefs.current.get(item.id);
         if (!element) return;
+        element.style.visibility = item.spawnDelay > 0 ? 'hidden' : 'visible';
         element.style.left = '0';
         element.style.top = '0';
         element.style.transform = `translate3d(${gameWidth * item.x / 100}px, ${gameHeight * item.y / 100}px, 0) translate3d(-50%, -50%, 0)`;
@@ -259,6 +261,9 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         return createRespawnItem(item, currentItems);
       };
       const nextItems = currentItems.map((item) => {
+        if (item.spawnDelay > 0) {
+          return { ...item, y: SPAWN_LINE_Y, spawnDelay: Math.max(0, item.spawnDelay - elapsedSeconds) };
+        }
         const stageSpeedMultiplier = maxDifficultyRef.current
           ? MAX_DIFFICULTY_SPEED_MULTIPLIER
           : 1 + (stageRef.current - 1) * 0.26;
@@ -340,6 +345,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       element.style.removeProperty('left');
       element.style.removeProperty('top');
       element.style.removeProperty('transform');
+      element.style.removeProperty('visibility');
     });
     if (playerElementRef.current) {
       playerElementRef.current.style.removeProperty('left');

@@ -8,6 +8,7 @@ const GIANT_POOP_CHANCE = 0.16;
 const CLUSTER_POOP_CHANCE = 0.2;
 const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
 const START_RAINBOW_DURATION_MS = 1250;
+const GAME_UI_UPDATE_INTERVAL_MS = 33;
 const PLAYER_MIN_X = 6;
 const PLAYER_MAX_X = 94;
 const SPAWN_MIN_X = 3;
@@ -189,6 +190,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     if (gameOver || completed || isStarting || paused) return undefined;
     let frame = 0;
     let previousTime: number | null = null;
+    let lastUiUpdateTime = 0;
     const createRespawnItem = (item: GameItem, currentItems: GameItem[]) => {
       const shouldSpawnGiant = stageRef.current >= 2 && stageRef.current < MAX_STAGE && item.type === 'poop'
         && !currentItems.some((currentItem) => currentItem.size === 'giant')
@@ -201,16 +203,16 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       return makeItem(nextId.current++, item.type);
     };
     const tick = (time: number) => {
-      const elapsedSeconds = previousTime === null ? 0 : Math.min((time - previousTime) / 1000, 0.05);
+      const elapsedSeconds = previousTime === null ? 0 : Math.min((time - previousTime) / 1000, 0.1);
+      const frameScale = elapsedSeconds * 60;
       previousTime = time;
       const nextPlayerX = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, playerXRef.current + directionRef.current * PLAYER_SPEED_PERCENT_PER_SECOND * elapsedSeconds));
       playerXRef.current = nextPlayerX;
-      setPlayerX(nextPlayerX);
       const currentItems = itemsRef.current;
       let collectedCoins = 0;
       const nextItems = currentItems.map((item) => {
         const stageSpeedMultiplier = 1 + (stageRef.current - 1) * 0.18;
-        const nextY = item.y + item.speed * 16 * stageSpeedMultiplier;
+        const nextY = item.y + item.speed * 16 * stageSpeedMultiplier * frameScale;
         const nearPlayer = Math.abs(nextY - PLAYER_HIT_Y_CENTER) < getItemHitYRadius(item)
           && Math.abs(item.x - playerXRef.current) < getItemHitXRadius(item);
         if (nearPlayer) {
@@ -238,6 +240,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         }
         return nextY > 108 ? createRespawnItem(item, currentItems) : { ...item, y: nextY };
       });
+      let itemsToRender = nextItems;
+      let shouldRenderImmediately = false;
       if (collectedCoins > 0) {
         const nextScore = scoreRef.current + collectedCoins;
         scoreRef.current = nextScore;
@@ -251,7 +255,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         if (nextScore >= MAX_STAGE * 10) {
           directionRef.current = 0;
           itemsRef.current = [];
-          setItems([]);
+          itemsToRender = [];
+          shouldRenderImmediately = true;
           setGameOver(false);
           setCompleted(true);
         } else if (nextStage > stageRef.current) {
@@ -259,14 +264,18 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
           setStage(nextStage);
           const stageItems = createStageItems(nextStage);
           itemsRef.current = stageItems;
-          setItems(stageItems);
+          itemsToRender = stageItems;
+          shouldRenderImmediately = true;
         } else {
           itemsRef.current = nextItems;
-          setItems(nextItems);
         }
       } else {
         itemsRef.current = nextItems;
-        setItems(nextItems);
+      }
+      if (shouldRenderImmediately || time - lastUiUpdateTime >= GAME_UI_UPDATE_INTERVAL_MS) {
+        setPlayerX(nextPlayerX);
+        setItems(itemsToRender);
+        lastUiUpdateTime = time;
       }
       frame = window.requestAnimationFrame(tick);
     };

@@ -9,6 +9,8 @@ import {
 import type { Toilet } from '../types/toilet';
 import keyMarkerUrl from '../assets/key-marker.svg';
 import userMarkerUrl from '../assets/user-marker.svg';
+import redMarkerUrl from '../assets/red-marker.svg';
+import currentMarkerUrl from '../assets/current-marker.svg';
 import { addUserToilet, deleteUserToilet, getUserToilets, updateUserToilet } from '../services/userToiletService';
 import { getDirections } from '../services/directionsService';
 import type { DirectionsMode, DirectionsRoute } from '../services/directionsService';
@@ -72,6 +74,8 @@ type MapToilet = Position & {
 type RouteInfo = DirectionsRoute;
 type MapProps = { toilets: Toilet[]; query?: string; user: User | null; onLoginRequired: () => void };
 
+const CURRENT_LOCATION_MARKER_IMAGE = { src: currentMarkerUrl, size: { width: 40, height: 48 }, options: { alt: 'Current location', offset: { x: 20, y: 48 } } };
+const DESTINATION_MARKER_IMAGE = { src: redMarkerUrl, size: { width: 36, height: 44 }, options: { alt: 'Directions destination', offset: { x: 18, y: 44 } } };
 const ACCESS_KEY_MARKER_IMAGE = {
   src: keyMarkerUrl,
   size: { width: 40, height: 48 },
@@ -611,7 +615,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     <MapMarker
       key={toilet.id}
       position={{ lat: toilet.lat, lng: toilet.lng }}
-      image={toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
+      image={directionsTarget?.id === toilet.id ? DESTINATION_MARKER_IMAGE : toilet.isUserAdded ? USER_MARKER_IMAGE : toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
       title={`${toilet.requiresPassword ? '비밀번호 필요 · ' : toilet.requiresAccessKey ? '출입 확인 필요 · ' : ''}${toilet.name}`}
       onClick={() => directionsTarget ? setSelectedToiletId(toilet.id) : selectToilet(toilet)}
     >
@@ -867,7 +871,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
             onClick={selectOriginOnMap}
           >
             {currentPosition && (
-              <MapMarker position={currentPosition} title={currentPosition.accuracy === 0 ? '선택한 출발점' : '현재 위치'}>
+              <MapMarker position={currentPosition} image={CURRENT_LOCATION_MARKER_IMAGE} title={currentPosition.accuracy === 0 ? '선택한 출발점' : '현재 위치'}>
                 <div className="map-current-label">{currentPosition.accuracy === 0 ? '선택한 출발점' : '현재 위치'}</div>
               </MapMarker>
             )}
@@ -887,7 +891,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                 <MapMarker
                   key={toilet.id}
                   position={{ lat: toilet.lat, lng: toilet.lng }}
-                  image={toilet.isUserAdded ? USER_MARKER_IMAGE : toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
+                  image={directionsTarget?.id === toilet.id ? DESTINATION_MARKER_IMAGE : toilet.isUserAdded ? USER_MARKER_IMAGE : toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
                   title={`${toilet.requiresPassword ? '비밀번호 필요 · ' : toilet.requiresAccessKey ? '출입 확인 필요 · ' : ''}${toilet.name}`}
                   onClick={() => setSelectedToiletId((current) => directionsTarget ? toilet.id : current === toilet.id ? null : toilet.id)}
                 >

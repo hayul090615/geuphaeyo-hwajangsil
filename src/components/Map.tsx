@@ -11,6 +11,7 @@ import keyMarkerUrl from '../assets/key-marker.svg';
 import userMarkerUrl from '../assets/user-marker.svg';
 import redMarkerUrl from '../assets/red-marker.svg';
 import currentMarkerUrl from '../assets/current-marker.svg';
+import startMarkerUrl from '../assets/start-marker.svg';
 import { addUserToilet, deleteUserToilet, getUserToilets, updateUserToilet } from '../services/userToiletService';
 import { getDirections } from '../services/directionsService';
 import type { DirectionsMode, DirectionsRoute } from '../services/directionsService';
@@ -75,6 +76,7 @@ type RouteInfo = DirectionsRoute;
 type MapProps = { toilets: Toilet[]; query?: string; user: User | null; onLoginRequired: () => void };
 
 const CURRENT_LOCATION_MARKER_IMAGE = { src: currentMarkerUrl, size: { width: 40, height: 48 }, options: { alt: 'Current location', offset: { x: 20, y: 48 } } };
+const DIRECTIONS_START_MARKER_IMAGE = { src: startMarkerUrl, size: { width: 40, height: 48 }, options: { alt: 'Directions starting point', offset: { x: 20, y: 48 } } };
 const DESTINATION_MARKER_IMAGE = { src: redMarkerUrl, size: { width: 36, height: 44 }, options: { alt: 'Directions destination', offset: { x: 18, y: 44 } } };
 const ACCESS_KEY_MARKER_IMAGE = {
   src: keyMarkerUrl,
@@ -871,8 +873,8 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
             onClick={selectOriginOnMap}
           >
             {currentPosition && (
-              <MapMarker position={currentPosition} image={CURRENT_LOCATION_MARKER_IMAGE} title={currentPosition.accuracy === 0 ? '선택한 출발점' : '현재 위치'}>
-                <div className="map-current-label">{currentPosition.accuracy === 0 ? '선택한 출발점' : '현재 위치'}</div>
+              <MapMarker position={currentPosition} image={directionsTarget ? DIRECTIONS_START_MARKER_IMAGE : CURRENT_LOCATION_MARKER_IMAGE} title={directionsTarget ? '출발' : currentPosition.accuracy === 0 ? '선택한 출발점' : '현재 위치'}>
+                {!directionsTarget && <div className="map-current-label">{currentPosition.accuracy === 0 ? '선택한 출발점' : '현재 위치'}</div>}
               </MapMarker>
             )}
 

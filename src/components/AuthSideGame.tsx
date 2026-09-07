@@ -7,6 +7,7 @@ const MAX_STAGE = 5;
 const GIANT_POOP_CHANCE = 0.16;
 const CLUSTER_POOP_CHANCE = 0.2;
 const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
+const START_BURST_DURATION_MS = 1250;
 const PLAYER_MIN_X = 6;
 const PLAYER_MAX_X = 94;
 const SPAWN_MIN_X = 3;
@@ -104,6 +105,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const [fireEffect, setFireEffect] = useState<{ id: number; x: number } | null>(null);
   const [gameOver, setGameOver] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [isStarting, setIsStarting] = useState(true);
   const playerXRef = useRef(50);
   const directionRef = useRef<-1 | 0 | 1>(0);
   const scoreRef = useRef(0);
@@ -116,6 +118,12 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const pointerStartRef = useRef<{ id: number; x: number; playerX: number } | null>(null);
   itemsRef.current = items;
 
+  useEffect(() => {
+    if (!isStarting) return undefined;
+    const timeout = window.setTimeout(() => setIsStarting(false), START_BURST_DURATION_MS);
+    return () => window.clearTimeout(timeout);
+  }, [isStarting]);
+
   const setPointerDirection = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
     const center = bounds.left + bounds.width / 2;
@@ -123,7 +131,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     directionRef.current = event.clientX < center - deadZone ? -1 : event.clientX > center + deadZone ? 1 : 0;
   };
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (gameOver || completed || paused) return;
+    if (gameOver || completed || isStarting || paused) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     pointerStartRef.current = { id: event.pointerId, x: event.clientX, playerX: playerXRef.current };
     setPointerDirection(event);
@@ -158,7 +166,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-      if (paused || completed) return;
+      if (paused || completed || isStarting) return;
       event.preventDefault();
       directionRef.current = event.key === 'ArrowLeft' ? -1 : 1;
     };
@@ -173,10 +181,10 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', stopPointerDirection);
     };
-  }, [completed, paused]);
+  }, [completed, isStarting, paused]);
 
   useEffect(() => {
-    if (gameOver || completed || paused) return undefined;
+    if (gameOver || completed || isStarting || paused) return undefined;
     let frame = 0;
     let previousTime: number | null = null;
     const createRespawnItem = (item: GameItem, currentItems: GameItem[]) => {
@@ -260,7 +268,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     };
     frame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frame);
-  }, [completed, gameOver, paused]);
+  }, [completed, gameOver, isStarting, paused]);
 
   const restart = () => {
     directionRef.current = 0;
@@ -281,9 +289,10 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     setCoinEffect(false);
     setFireEffect(null);
     setCompleted(false);
+    setIsStarting(true);
   };
   const togglePause = () => {
-    if (gameOver || completed) return;
+    if (gameOver || completed || isStarting) return;
     pointerStartRef.current = null;
     directionRef.current = 0;
     setPaused((current) => !current);
@@ -305,6 +314,16 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     <div className="auth-poop-line" aria-hidden="true" />
     {fireEffect && <span className="auth-poop-fire" style={{ left: `${fireEffect.x}%` }} aria-hidden="true">🔥</span>}
     <div className="auth-game-player" style={{ left: `${playerX}%` }} aria-label="Player">🚽</div>
+    {isStarting && <div className="auth-game-start-burst" aria-label="게임 시작 효과">
+      <div className="auth-poop-explosion" aria-hidden="true">
+        {POOP_EXPLOSION_PARTICLES.map((particle, index) => <img
+          key={index}
+          src={rainbowPoopUrl}
+          alt=""
+          style={{ '--explosion-x': `${particle.x}px`, '--explosion-y': `${particle.y}px`, '--explosion-delay': `${particle.delay}s` } as CSSProperties}
+        />)}
+      </div>
+    </div>}
     {paused && !gameOver && <div className="auth-game-paused" aria-live="polite">일시정지</div>}
     {completed && <div className="auth-game-complete" role="dialog" aria-modal="true" aria-label="게임 완료">
       <div className="auth-poop-explosion" aria-hidden="true">

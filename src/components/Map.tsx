@@ -292,6 +292,8 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
         setHasCompletedSearch(true);
         setSelectedToiletId(null);
         setMapLevel(NEARBY_MAP_LEVEL);
+        map?.setLevel(NEARBY_MAP_LEVEL);
+        map?.panTo(new kakao.maps.LatLng(position.lat, position.lng));
         setStatusMessage('현재 위치 주변의 화장실을 찾는 중입니다.');
         onLocated?.(position);
       },
@@ -306,7 +308,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
       },
       { enableHighAccuracy: true, timeout: 8_000, maximumAge: 30_000 },
     );
-  }, []);
+  }, [map]);
 
   useEffect(() => {
     if (!map || currentPosition) return;

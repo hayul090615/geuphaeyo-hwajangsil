@@ -104,6 +104,15 @@
   background: #f3f4f1;
 }
 
+/* The auth view owns the whole viewport, so the document itself must not scroll. */
+html:has(.auth-page),
+body:has(.auth-page),
+body:has(.auth-page) #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 .auth-page::before {
   position: absolute;
   inset: 0;

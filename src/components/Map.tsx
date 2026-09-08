@@ -40,6 +40,7 @@ const SEARCH_DEBOUNCE_MS = 180;
 const SEOUL_MAP_LEVEL = 8;
 const NEARBY_MAP_LEVEL = 5;
 const MAX_AUTO_LOCATION_ACCURACY_METERS = 150;
+const MAX_TOILET_RADIUS_METERS = 5_000;
 const ARRIVAL_DISTANCE_METERS = 40;
 const MAX_SEARCH_CACHE_ENTRIES = 24;
 const DIRECTIONS_MODE_OPTIONS: Array<{ mode: DirectionsMode; icon: string; label: string }> = [
@@ -301,6 +302,11 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
     );
   }, []);
 
+  useEffect(() => {
+    if (!map || currentPosition) return;
+    requestCurrentLocation();
+  }, [currentPosition, map, requestCurrentLocation]);
+
   const searchMapBounds = useCallback(async () => {
     if (!map || !window.kakao?.maps?.services || directionsTargetRef.current || regionQuery) return;
     if (map.getLevel() > NEARBY_MAP_LEVEL) {
@@ -504,16 +510,19 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   }, [map, regionQuery]);
 
   const availableToilets = useMemo(() => {
-    const isInCurrentBounds = (toilet: MapToilet) => !viewportBounds || (
+    const isInCurrentViewport = (toilet: MapToilet) => !viewportBounds || (
       toilet.lat >= viewportBounds.south &&
       toilet.lat <= viewportBounds.north &&
       toilet.lng >= viewportBounds.west &&
       toilet.lng <= viewportBounds.east
     );
-    const fallbackToiletsInBounds = fallbackToilets.filter(isInCurrentBounds);
+    const isWithinLocationRadius = (toilet: MapToilet) => !currentPosition ||
+      getDistanceMeters(currentPosition, toilet) <= MAX_TOILET_RADIUS_METERS;
+    const isVisibleInSearchArea = (toilet: MapToilet) => isInCurrentViewport(toilet) && isWithinLocationRadius(toilet);
+    const fallbackToiletsInBounds = fallbackToilets.filter(isVisibleInSearchArea);
     if (!hasCompletedSearch) return fallbackToiletsInBounds;
 
-    const nearbyToiletsInBounds = nearbyToilets.filter(isInCurrentBounds);
+    const nearbyToiletsInBounds = nearbyToilets.filter(isVisibleInSearchArea);
     const importedToilets = fallbackToiletsInBounds.filter((fallback) => !nearbyToiletsInBounds.some((nearby) =>
       nearby.name === fallback.name || getDistanceMeters(nearby, fallback) < 35
     ));

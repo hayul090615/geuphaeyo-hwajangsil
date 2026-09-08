@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Map as KakaoMap,
   MapMarker,
-  MarkerClusterer,
   Polyline,
   useKakaoLoader,
 } from 'react-kakao-maps-sdk';
@@ -944,56 +943,54 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
               />
             )}
 
-            <MarkerClusterer averageCenter minLevel={7}>
-              {displayedToilets.map((toilet) => (
-                <MapMarker
-                  key={toilet.id}
-                  position={{ lat: toilet.lat, lng: toilet.lng }}
-                  image={directionsTarget?.id === toilet.id ? DESTINATION_MARKER_IMAGE : toilet.isUserAdded ? USER_MARKER_IMAGE : toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
-                  zIndex={selectedToiletId === toilet.id ? 1000 : 1}
-                  infoWindowOptions={{ disableAutoPan: true, zIndex: selectedToiletId === toilet.id ? 1001 : 1 }}
-                  title={`${toilet.requiresPassword ? '비밀번호 필요 · ' : toilet.requiresAccessKey ? '출입 확인 필요 · ' : ''}${toilet.name}`}
-                  onClick={() => setSelectedToiletId((current) => directionsTarget ? toilet.id : current === toilet.id ? null : toilet.id)}
-                >
-                  {selectedToiletId === toilet.id && (
-                    <div className="map-place-info">
-                      {directionsTarget && <button
-                        type="button"
-                        className="map-place-close"
-                        aria-label="도착지 화장실 팝업 닫기"
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onClick={(event) => { event.stopPropagation(); setSelectedToiletId(null); }}
-                      >×</button>}
-                      <strong>{toilet.name}</strong>
-                      <span>{toilet.address}</span>{!toilet.isUserAdded && <span className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</span>}
-                      <p className="map-place-description">
-                        {toilet.category || '화장실'}로 등록된 시설입니다. 운영시간과 현장 편의시설은 방문 전 전화 또는 현장 안내로 확인해 주세요.
-                      </p>
-                      <div className="map-place-meta">
-                        {toilet.category && <span>{toilet.category}</span>}
-                        {toilet.distance && <em>{toilet.distance}</em>}
-                        {toilet.openAllDay !== undefined && <span>{toilet.openAllDay ? '24시간 운영' : '운영시간 확인 필요'}</span>}
-                        {toilet.requiresAccessKey && (
-                          <span title={toilet.accessNote}>
-                            &#128273; {toilet.requiresPassword ? '비밀번호 필요' : '출입 확인 필요'}
-                          </span>
-                        )}
-                        <span className="map-data-confidence">{getDataConfidenceLabel(toilet)}</span>
-                        {toilet.accessible && <span>휠체어 접근 가능</span>}
-                      </div>
-                      {toilet.phone && <a href={`tel:${toilet.phone}`}>{toilet.phone}</a>}
-                      {!directionsTarget && (
-                        <div className="map-place-actions">
-                          {toilet.isUserAdded && <><button type="button" className="map-edit-button" onClick={(event) => { event.stopPropagation(); if (!user) return; const name = window.prompt('화장실 이름을 수정하세요.', toilet.name); if (!name?.trim()) return; const address = window.prompt('주소나 위치 설명을 수정하세요.', toilet.address); updateUserToilet(user.id, { id: toilet.id, name: name.trim(), address: address?.trim() || toilet.address, distance: toilet.distance || '', openAllDay: toilet.openAllDay ?? false, accessible: toilet.accessible ?? false, latitude: toilet.lat, longitude: toilet.lng, isUserAdded: true }); setUserToilets(getUserToilets(user.id)); }}>수정</button><button type="button" className="map-delete-button" onClick={(event) => { event.stopPropagation(); if (user && window.confirm('이 화장실을 삭제할까요?')) { deleteUserToilet(user.id, toilet.id.replace(/^mock-/, '')); setUserToilets(getUserToilets(user.id)); setSelectedToiletId(null); } }}>삭제</button></>}
-                          {!toilet.isUserAdded && <button type="button" className="map-review-button" onClick={(event) => { event.stopPropagation(); setReviewTarget(toilet); }}>별점·청결도 리뷰</button>}
-                          <button type="button" className="map-direction-button" onClick={(event) => { event.stopPropagation(); startDirections(toilet); }}>길찾기 시작</button>
-                        </div>
+            {displayedToilets.map((toilet) => (
+              <MapMarker
+                key={toilet.id}
+                position={{ lat: toilet.lat, lng: toilet.lng }}
+                image={directionsTarget?.id === toilet.id ? DESTINATION_MARKER_IMAGE : toilet.isUserAdded ? USER_MARKER_IMAGE : toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
+                zIndex={selectedToiletId === toilet.id ? 1000 : 1}
+                infoWindowOptions={{ disableAutoPan: true, zIndex: selectedToiletId === toilet.id ? 1001 : 1 }}
+                title={`${toilet.requiresPassword ? '비밀번호 필요 · ' : toilet.requiresAccessKey ? '출입 확인 필요 · ' : ''}${toilet.name}`}
+                onClick={() => setSelectedToiletId((current) => directionsTarget ? toilet.id : current === toilet.id ? null : toilet.id)}
+              >
+                {selectedToiletId === toilet.id && (
+                  <div className="map-place-info">
+                    {directionsTarget && <button
+                      type="button"
+                      className="map-place-close"
+                      aria-label="도착지 화장실 팝업 닫기"
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => { event.stopPropagation(); setSelectedToiletId(null); }}
+                    >×</button>}
+                    <strong>{toilet.name}</strong>
+                    <span>{toilet.address}</span>{!toilet.isUserAdded && <span className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</span>}
+                    <p className="map-place-description">
+                      {toilet.category || '화장실'}로 등록된 시설입니다. 운영시간과 현장 편의시설은 방문 전 전화 또는 현장 안내로 확인해 주세요.
+                    </p>
+                    <div className="map-place-meta">
+                      {toilet.category && <span>{toilet.category}</span>}
+                      {toilet.distance && <em>{toilet.distance}</em>}
+                      {toilet.openAllDay !== undefined && <span>{toilet.openAllDay ? '24시간 운영' : '운영시간 확인 필요'}</span>}
+                      {toilet.requiresAccessKey && (
+                        <span title={toilet.accessNote}>
+                          &#128273; {toilet.requiresPassword ? '비밀번호 필요' : '출입 확인 필요'}
+                        </span>
                       )}
+                      <span className="map-data-confidence">{getDataConfidenceLabel(toilet)}</span>
+                      {toilet.accessible && <span>휠체어 접근 가능</span>}
                     </div>
-                  )}
-                </MapMarker>
-              ))}
-            </MarkerClusterer>
+                    {toilet.phone && <a href={`tel:${toilet.phone}`}>{toilet.phone}</a>}
+                    {!directionsTarget && (
+                      <div className="map-place-actions">
+                        {toilet.isUserAdded && <><button type="button" className="map-edit-button" onClick={(event) => { event.stopPropagation(); if (!user) return; const name = window.prompt('화장실 이름을 수정하세요.', toilet.name); if (!name?.trim()) return; const address = window.prompt('주소나 위치 설명을 수정하세요.', toilet.address); updateUserToilet(user.id, { id: toilet.id, name: name.trim(), address: address?.trim() || toilet.address, distance: toilet.distance || '', openAllDay: toilet.openAllDay ?? false, accessible: toilet.accessible ?? false, latitude: toilet.lat, longitude: toilet.lng, isUserAdded: true }); setUserToilets(getUserToilets(user.id)); }}>수정</button><button type="button" className="map-delete-button" onClick={(event) => { event.stopPropagation(); if (user && window.confirm('이 화장실을 삭제할까요?')) { deleteUserToilet(user.id, toilet.id.replace(/^mock-/, '')); setUserToilets(getUserToilets(user.id)); setSelectedToiletId(null); } }}>삭제</button></>}
+                        {!toilet.isUserAdded && <button type="button" className="map-review-button" onClick={(event) => { event.stopPropagation(); setReviewTarget(toilet); }}>별점·청결도 리뷰</button>}
+                        <button type="button" className="map-direction-button" onClick={(event) => { event.stopPropagation(); startDirections(toilet); }}>길찾기 시작</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </MapMarker>
+            ))}
           </KakaoMap>
 
           {!directionsTarget && (

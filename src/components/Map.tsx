@@ -943,7 +943,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
             onClick={selectOriginOnMap}
           >
             {currentPosition && (
-              <MapMarker position={currentPosition} image={directionsTarget ? DIRECTIONS_START_MARKER_IMAGE : CURRENT_LOCATION_MARKER_IMAGE} title={directionsTarget ? '출발' : currentPosition.accuracy === 0 ? '선택한 출발점' : '현재 위치'}>
+              <MapMarker key={directionsTarget ? 'directions-start' : 'current-location'} position={currentPosition} image={directionsTarget ? DIRECTIONS_START_MARKER_IMAGE : CURRENT_LOCATION_MARKER_IMAGE} title={directionsTarget ? '출발' : currentPosition.accuracy === 0 ? '선택한 출발점' : '현재 위치'}>
                 {!directionsTarget && <div className="map-current-label">{currentPosition.accuracy === 0 ? '선택한 출발점' : '현재 위치'}</div>}
               </MapMarker>
             )}
@@ -960,7 +960,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
 
             {displayedToilets.map((toilet) => (
               <MapMarker
-                key={toilet.id}
+                key={`${directionsTarget ? 'destination' : 'toilet'}-${toilet.id}`}
                 position={{ lat: toilet.lat, lng: toilet.lng }}
                 image={directionsTarget?.id === toilet.id ? DESTINATION_MARKER_IMAGE : toilet.isUserAdded ? USER_MARKER_IMAGE : toilet.requiresAccessKey ? ACCESS_KEY_MARKER_IMAGE : undefined}
                 zIndex={selectedToiletId === toilet.id ? 1000 : 1}
@@ -970,13 +970,13 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
               >
                 {selectedToiletId === toilet.id && (
                   <div className="map-place-info">
-                    {directionsTarget && <button
+                    <button
                       type="button"
                       className="map-place-close"
-                      aria-label="도착지 화장실 팝업 닫기"
+                      aria-label={`${toilet.name} 팝업 닫기`}
                       onPointerDown={(event) => event.stopPropagation()}
                       onClick={(event) => { event.stopPropagation(); setSelectedToiletId(null); }}
-                    >×</button>}
+                    >×</button>
                     <strong>{toilet.name}</strong>
                     <span>{toilet.address}</span>{!toilet.isUserAdded && <span className="map-going-now">👥 {getPeopleGoing(toilet)}명 가는 중 · 잠시 대기 가능</span>}
                     <p className="map-place-description">

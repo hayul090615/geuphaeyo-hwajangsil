@@ -628,3 +628,54 @@ body:has(.auth-page) #root {
     grid-column: auto;
   }
 }
+
+/* Poop game magnet item and the short coin-attraction effect. */
+.auth-game-item .auth-falling-item.magnet {
+  width: 29px;
+  height: 29px;
+  font-size: 25px;
+  animation: auth-magnet-pulse .65s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px #e05a47aa);
+}
+
+.auth-game-magnet-status {
+  position: absolute;
+  top: 106px;
+  left: 50%;
+  z-index: 8;
+  transform: translateX(-50%);
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #fff4c9e8;
+  color: #b56d00;
+  font-size: 9px;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 2px 7px #b56d0033;
+}
+
+.auth-game-item.is-magnetized .auth-falling-item.coin {
+  animation: auth-coin-magnet .45s ease-in-out infinite;
+}
+
+@keyframes auth-magnet-pulse {
+  50% { transform: scale(1.18) rotate(-8deg); }
+}
+
+@keyframes auth-coin-magnet {
+  50% { filter: drop-shadow(0 0 7px #ffd43b); transform: scale(1.18); }
+}
+
+@media (max-width: 760px) {
+  .auth-game-item .auth-falling-item.magnet {
+    width: 23px;
+    height: 23px;
+    font-size: 20px;
+  }
+
+  .auth-game-magnet-status {
+    top: 104px;
+    padding: 2px 5px;
+    font-size: 8px;
+  }
+}

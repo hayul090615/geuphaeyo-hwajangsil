@@ -136,7 +136,7 @@ const createStageItems = (stage: number) => {
 const createMaxDifficultyItems = () => {
   const types: GameItem['type'][] = [
     ...Array.from({ length: 20 }, () => 'poop' as const),
-    ...Array.from({ length: 2 }, () => 'coin' as const),
+    ...Array.from({ length: 5 }, () => 'coin' as const),
   ];
   const spawnXs = getSpreadSpawnXs(types.length);
   const spawnDelays = getStaggeredSpawnDelays(types.length);
@@ -178,6 +178,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const magnetActiveRef = useRef(false);
   const magnetCoinsLeftRef = useRef(0);
   const magnetTimeoutRef = useRef<number | null>(null);
+  const coinEffectTimeoutRef = useRef<number | null>(null);
+  const fireEffectUntilRef = useRef(0);
   const itemsRef = useRef<GameItem[]>(items);
   const damageEffectId = useRef(0);
   const pointerStartRef = useRef<{ id: number; x: number; playerX: number } | null>(null);
@@ -192,6 +194,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
 
   useEffect(() => () => {
     if (magnetTimeoutRef.current !== null) window.clearTimeout(magnetTimeoutRef.current);
+    if (coinEffectTimeoutRef.current !== null) window.clearTimeout(coinEffectTimeoutRef.current);
   }, []);
 
   const setPointerDirection = (event: PointerEvent<HTMLDivElement>) => {
@@ -268,12 +271,9 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         const element = itemElementRefs.current.get(item.id);
         if (!element) return;
         element.style.visibility = item.spawnDelay > 0 ? 'hidden' : 'visible';
-        element.style.left = '0';
-        element.style.top = '0';
         element.style.transform = `translate3d(${gameWidth * item.x / 100}px, ${gameHeight * item.y / 100}px, 0) translate3d(-50%, -50%, 0)`;
       });
       if (playerElementRef.current) {
-        playerElementRef.current.style.left = '0';
         playerElementRef.current.style.transform = `translate3d(${gameWidth * nextPlayerX / 100}px, 0, 0) translateX(-50%)`;
       }
     };
@@ -334,9 +334,12 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         if (nearPlayer) {
           if (item.type === 'coin') {
             collectedCoins += 1;
-            setPlayerX(playerXRef.current);
             setCoinEffect(true);
-            window.setTimeout(() => setCoinEffect(false), 350);
+            if (coinEffectTimeoutRef.current !== null) window.clearTimeout(coinEffectTimeoutRef.current);
+            coinEffectTimeoutRef.current = window.setTimeout(() => {
+              setCoinEffect(false);
+              coinEffectTimeoutRef.current = null;
+            }, 350);
             if (isFallingCoin && magnetActiveRef.current && magnetCoinsLeftRef.current > 0) {
               const nextMagnetCoinsLeft = magnetCoinsLeftRef.current - 1;
               magnetCoinsLeftRef.current = nextMagnetCoinsLeft;
@@ -377,8 +380,11 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         }
         const touchesPoopLine = item.y < BOTTOM_LINE_Y && nextY >= BOTTOM_LINE_Y;
         if (touchesPoopLine) {
-          setFireEffect({ id: item.id, x: item.x });
-          window.setTimeout(() => setFireEffect((current) => current?.id === item.id ? null : current), 320);
+          if (time >= fireEffectUntilRef.current) {
+            fireEffectUntilRef.current = time + 120;
+            setFireEffect({ id: item.id, x: item.x });
+            window.setTimeout(() => setFireEffect((current) => current?.id === item.id ? null : current), 320);
+          }
           return respawnItem(item);
         }
         return nextY > 108 ? respawnItem(item) : { ...item, x: nextX, y: nextY };
@@ -387,6 +393,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       if (collectedCoins > 0) {
         const nextScore = scoreRef.current + collectedCoins;
         scoreRef.current = nextScore;
+        setPlayerX(nextPlayerX);
         setScore(nextScore);
         if (nextScore > highScoreRef.current) {
           highScoreRef.current = nextScore;
@@ -441,13 +448,10 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     playerXRef.current = 50;
     setPlayerX(50);
     itemElementRefs.current.forEach((element) => {
-      element.style.removeProperty('left');
-      element.style.removeProperty('top');
       element.style.removeProperty('transform');
       element.style.removeProperty('visibility');
     });
     if (playerElementRef.current) {
-      playerElementRef.current.style.removeProperty('left');
       playerElementRef.current.style.removeProperty('transform');
     }
     const stageItems = createStageItems(1);
@@ -462,7 +466,9 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     setDamageEffect(null);
     setFireEffect(null);
     if (magnetTimeoutRef.current !== null) window.clearTimeout(magnetTimeoutRef.current);
+    if (coinEffectTimeoutRef.current !== null) window.clearTimeout(coinEffectTimeoutRef.current);
     magnetTimeoutRef.current = null;
+    coinEffectTimeoutRef.current = null;
     magnetActiveRef.current = false;
     magnetCoinsLeftRef.current = 0;
     setMagnetActive(false);
@@ -517,13 +523,12 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         else itemElementRefs.current.delete(item.id);
       }}
       className={`auth-game-item${magnetActive && item.type === 'coin' ? ' is-magnetized' : ''}`}
-      style={{ '--item-left': `${item.x}%`, '--item-top': `${item.y}%` } as CSSProperties}
     >
         {item.type === 'coin' ? <span className="auth-falling-item coin"><span className="auth-coin-icon" aria-hidden="true" /></span> : item.type === 'magnet' ? <span className="auth-falling-item magnet" role="img" aria-label="코인 자석">🧲</span> : item.size === 'cluster' ? <span className="auth-falling-item poop cluster" aria-hidden="true" style={{ width: `${31 * item.scale + (getClusterCount(item) - 1) * 23 * item.scale}px`, height: `${31 * item.scale}px` }}>{Array.from({ length: getClusterCount(item) }, (_, index) => <img key={index} src={rainbowPoopUrl} alt="" style={{ width: `${31 * item.scale}px`, height: `${31 * item.scale}px`, marginLeft: index === 0 ? 0 : `${-8 * item.scale}px` }} />)}</span> : <img className={`auth-falling-item poop${item.size === 'giant' ? ' giant' : ''}`} style={item.size === 'giant' ? { width: `${32 * item.scale}px`, height: `${32 * item.scale}px` } : undefined} src={rainbowPoopUrl} alt="" />}
     </div>)}
     <div className="auth-poop-line" aria-hidden="true" />
     {fireEffect && <span className="auth-poop-fire" style={{ left: `${fireEffect.x}%` }} aria-hidden="true">🔥</span>}
-    <div className="auth-game-player" ref={playerElementRef} style={{ '--player-left': `${playerX}%` } as CSSProperties} aria-label="Player">🚽</div>
+    <div className="auth-game-player" ref={playerElementRef} aria-label="Player">🚽</div>
     {damageEffect && <span className="auth-game-damage" style={{ left: `${damageEffect.x}%` }} aria-live="polite">
       <span>-1</span><span className="auth-broken-heart" role="img" aria-label="깨지는 하트" />
     </span>}

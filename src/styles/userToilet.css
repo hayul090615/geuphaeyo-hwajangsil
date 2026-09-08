@@ -679,3 +679,31 @@ body:has(.auth-page) #root {
     font-size: 8px;
   }
 }
+
+/* Keep the game on the compositor: only transforms change every animation frame. */
+.auth-game-item {
+  left: 0 !important;
+  top: 0 !important;
+}
+
+.auth-side-game .auth-game-player {
+  left: 0 !important;
+}
+
+/* Static color treatment is lighter than animating a filter on every poop. */
+.auth-game-item .auth-falling-item.poop {
+  filter: saturate(1.35);
+  text-shadow: none;
+}
+
+.auth-game-item .auth-falling-item.poop:not(.cluster) {
+  animation: auth-poop-spin .8s linear infinite;
+}
+
+.auth-game-item .auth-falling-item.poop.cluster {
+  animation: auth-cluster-spin .95s linear infinite;
+}
+
+.auth-side-game::after {
+  animation: none;
+}

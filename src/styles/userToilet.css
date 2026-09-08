@@ -577,21 +577,21 @@
 /* Keep the login card centered with equal left and right breathing room. */
 @media (min-width: 1201px) {
   .auth-page {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: clamp(52px, 4vw, 72px);
-    padding-left: clamp(24px, 4vw, 64px);
-    padding-right: clamp(24px, 4vw, 64px);
+    grid-template-columns: minmax(0, 1fr) minmax(440px, 480px);
+    gap: clamp(34px, 6vw, 104px);
+    padding-left: clamp(24px, 7vw, 112px);
+    padding-right: clamp(24px, 7vw, 112px);
   }
 
   .auth-intro {
     grid-column: 1;
-    justify-self: end;
-    width: min(100%, 660px);
+    justify-self: start;
+    width: min(100%, 820px);
   }
 
   .auth-page .auth-card {
     grid-column: 2;
-    justify-self: start;
+    justify-self: stretch;
   }
 }
 

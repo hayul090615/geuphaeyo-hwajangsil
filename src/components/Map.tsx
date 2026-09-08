@@ -96,6 +96,13 @@ function formatDistance(distance?: string) {
   return meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`;
 }
 
+function parseDistanceLabel(distance?: string) {
+  const match = distance?.match(/^(\d+(?:\.\d+)?)\s*(m|km)$/i);
+  if (!match) return Number.POSITIVE_INFINITY;
+  const value = Number(match[1]);
+  return match[2].toLowerCase() === 'km' ? value * 1000 : value;
+}
+
 function toMapToilet(place: kakao.maps.services.PlacesSearchResultItem): MapToilet {
   return {
     id: place.id,
@@ -530,8 +537,16 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
   const restrictedToiletCount = availableToilets.filter((toilet) => toilet.requiresAccessKey).length;
   const visibleToilets = useMemo(() => {
     let filtered = showRestrictedOnly ? availableToilets.filter((toilet) => toilet.requiresAccessKey) : availableToilets;
-    return filtered;
-  }, [availableToilets, showRestrictedOnly]);
+    return [...filtered].sort((first, second) => {
+      const firstDistance = currentPosition
+        ? getDistanceMeters(currentPosition, first)
+        : parseDistanceLabel(first.distance);
+      const secondDistance = currentPosition
+        ? getDistanceMeters(currentPosition, second)
+        : parseDistanceLabel(second.distance);
+      return firstDistance - secondDistance;
+    });
+  }, [availableToilets, currentPosition, showRestrictedOnly]);
   const displayedToilets = directionsTarget ? [directionsTarget] : visibleToilets;
   const presenceToiletIds = useMemo(
     () => Array.from(new Set(displayedToilets.filter((toilet) => !toilet.isUserAdded).map((toilet) => toilet.id))),
@@ -1010,10 +1025,10 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
 
           {!directionsTarget && <><button type="button" className="map-current-location-button" aria-label="현재 위치로 이동" onClick={() => requestCurrentLocation()}>⌖</button><button type="button" className="map-add-toilet-button" aria-label="화장실 추가" onClick={() => { if (!user) { onLoginRequired(); return; } setIsAddingToilet((active) => !active); setStatusMessage(isAddingToilet ? '화장실 추가를 취소했습니다.' : '지도를 클릭해 화장실 위치를 선택하세요.'); }}>+</button></>}
           {isResultPanelOpen && (
-            <aside id="map-result-panel" className="map-result-panel" aria-label="화장실 위치 목록">
+            <aside id="map-result-panel" className="map-result-panel" aria-label="가까운 화장실 목록">
             <div className="map-result-heading">
               <div>
-                <strong>{directionsTarget ? '길찾기 목적지' : '화장실 위치'}</strong>
+                <strong>{directionsTarget ? '길찾기 목적지' : '가까운 화장실'}</strong>
                 {!directionsTarget && <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">일부 위치 © OpenStreetMap</a>}
               </div>
               <span>{visibleToilets.length}곳</span>

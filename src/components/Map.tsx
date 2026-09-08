@@ -35,8 +35,8 @@ const SEARCH_PAGE_COUNT = 1;
 const WIDE_SEARCH_GRID_SIZE = 2;
 const NEARBY_SEARCH_GRID_SIZE = 1;
 const SEARCH_CONCURRENCY = 8;
-const SEARCH_REQUEST_TIMEOUT_MS = 2_200;
-const SEARCH_DEBOUNCE_MS = 500;
+const SEARCH_REQUEST_TIMEOUT_MS = 1_500;
+const SEARCH_DEBOUNCE_MS = 180;
 const SEOUL_MAP_LEVEL = 8;
 const NEARBY_MAP_LEVEL = 5;
 const MAX_AUTO_LOCATION_ACCURACY_METERS = 150;
@@ -366,20 +366,29 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
       ),
     );
     const results: PromiseSettledResult<kakao.maps.services.PlacesSearchResult>[] = [];
+    const uniquePlaces = new globalThis.Map<string, MapToilet>();
+    const publishPartialResults = (batchResults: PromiseSettledResult<kakao.maps.services.PlacesSearchResult>[]) => {
+      batchResults.forEach((result) => {
+        if (result.status !== 'fulfilled') return;
+        result.value.forEach((place) => {
+          if (!uniquePlaces.has(place.id)) uniquePlaces.set(place.id, toMapToilet(place));
+        });
+      });
+
+      // 모든 검색 요청이 끝날 때까지 기다리지 않고, 먼저 도착한 결과부터 지도에 표시합니다.
+      setNearbyToilets(Array.from(uniquePlaces.values()));
+      setHasCompletedSearch(true);
+    };
+
     for (let index = 0; index < searchTasks.length; index += SEARCH_CONCURRENCY) {
       if (requestId !== searchSequence.current) return;
       const batch = searchTasks.slice(index, index + SEARCH_CONCURRENCY);
-      results.push(...await Promise.allSettled(batch.map((search) => search())));
+      const batchResults = await Promise.allSettled(batch.map((search) => search()));
+      results.push(...batchResults);
+      if (requestId !== searchSequence.current) return;
+      publishPartialResults(batchResults);
     }
     if (requestId !== searchSequence.current) return;
-
-    const uniquePlaces = new globalThis.Map<string, MapToilet>();
-    results.forEach((result) => {
-      if (result.status !== 'fulfilled') return;
-      result.value.forEach((place) => {
-        if (!uniquePlaces.has(place.id)) uniquePlaces.set(place.id, toMapToilet(place));
-      });
-    });
 
     const foundToilets = Array.from(uniquePlaces.values());
     searchCache.current.set(searchCacheKey, foundToilets);
@@ -434,12 +443,13 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
         nextBounds.east.toFixed(4),
       ].join(':');
 
-      if (viewportKeyRef.current !== nextKey) {
+      const viewportChanged = viewportKeyRef.current !== nextKey;
+      if (viewportChanged) {
         viewportKeyRef.current = nextKey;
         setViewportBounds(nextBounds);
+        scheduleMapSearch();
       }
     }
-    scheduleMapSearch();
   }, [map, scheduleMapSearch]);
 
   useEffect(() => {

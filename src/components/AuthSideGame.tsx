@@ -10,6 +10,9 @@ const MAX_DIFFICULTY_SPEED_MULTIPLIER = 2.3;
 const MAX_DIFFICULTY_GIANT_CHANCE = 0.3;
 const MAX_DIFFICULTY_CLUSTER_CHANCE = 0.24;
 const MAGNET_DURATION_MS = 5_000;
+const MAGNET_MAX_COINS = 3;
+const STAGE_FOUR_MAGNET_CHANCE = 0.28;
+const STAGE_FIVE_MAGNET_CHANCE = 0.18;
 const STAGE_SPEED_MULTIPLIERS = [1, 1.42, 1.7, 1.98, 2.2] as const;
 const GIANT_PAIR_SCALE = 2.1;
 const HIGH_SCORE_KEY = 'your-poop-rainbow-best-score';
@@ -35,6 +38,7 @@ const STAGE_ITEM_COUNTS = [
   { poop: 14, coin: 2, magnet: 1 },
 ] as const;
 const getLargePoopScale = (stage: number) => stage === 2 ? 2 : stage === 3 ? 2.5 : 3;
+const getMagnetSpawnChance = (stage: number) => stage === 4 ? STAGE_FOUR_MAGNET_CHANCE : STAGE_FIVE_MAGNET_CHANCE;
 const STAGE_FIVE_VARIANTS = ['normal', 'pair', 'triple', 'giant', 'giantPair'] as const;
 type StageFiveVariant = typeof STAGE_FIVE_VARIANTS[number];
 const POOP_EXPLOSION_PARTICLES = [
@@ -98,7 +102,7 @@ const createStageItems = (stage: number) => {
   const types: GameItem['type'][] = [
     ...Array.from({ length: counts.poop }, () => 'poop' as const),
     ...Array.from({ length: counts.coin }, () => 'coin' as const),
-    ...Array.from({ length: counts.magnet }, () => 'magnet' as const),
+    ...Array.from({ length: counts.magnet }, () => Math.random() < getMagnetSpawnChance(stage) ? 'magnet' as const : 'coin' as const),
   ];
   const spawnXs = getSpreadSpawnXs(types.length);
   const spawnDelays = getStaggeredSpawnDelays(types.length);
@@ -159,6 +163,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const [paused, setPaused] = useState(false);
   const [fireEffect, setFireEffect] = useState<{ id: number; x: number } | null>(null);
   const [magnetActive, setMagnetActive] = useState(false);
+  const [magnetCoinsLeft, setMagnetCoinsLeft] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [isStarting, setIsStarting] = useState(true);
@@ -171,6 +176,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
   const livesRef = useRef(3);
   const maxDifficultyRef = useRef(false);
   const magnetActiveRef = useRef(false);
+  const magnetCoinsLeftRef = useRef(0);
   const magnetTimeoutRef = useRef<number | null>(null);
   const itemsRef = useRef<GameItem[]>(items);
   const damageEffectId = useRef(0);
@@ -290,7 +296,11 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
       if (shouldSpawnGiant) return makeItem(item.id, item.type, 'giant', getLargePoopScale(stageRef.current));
       if (shouldSpawnPair) return makeItem(item.id, 'poop', 'cluster', 1, getRandomSpawnX(), SPAWN_LINE_Y, 0, 2);
       if (shouldSpawnTriple) return makeItem(item.id, 'poop', 'cluster', 1, getRandomSpawnX(), SPAWN_LINE_Y, 0, 3);
-      if (item.type === 'magnet' && stageRef.current >= 4 && !maxDifficultyRef.current) return makeItem(item.id, 'magnet');
+      if (item.type === 'magnet' && stageRef.current >= 4 && !maxDifficultyRef.current) {
+        return Math.random() < getMagnetSpawnChance(stageRef.current)
+          ? makeItem(item.id, 'magnet')
+          : makeItem(item.id, 'coin');
+      }
       return makeItem(item.id, item.type);
     };
     const tick = (time: number) => {
@@ -313,7 +323,8 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         const stageSpeedMultiplier = maxDifficultyRef.current ? MAX_DIFFICULTY_SPEED_MULTIPLIER : STAGE_SPEED_MULTIPLIERS[stageRef.current - 1];
         let nextX = item.x;
         let nextY = item.y + item.speed * 16 * stageSpeedMultiplier * frameScale;
-        if (item.type === 'coin' && magnetActiveRef.current) {
+        const isFallingCoin = item.type === 'coin' && item.y > SPAWN_LINE_Y + 0.5;
+        if (isFallingCoin && magnetActiveRef.current && magnetCoinsLeftRef.current > 0) {
           const attraction = Math.min(1, elapsedSeconds * 5.5);
           nextX += (playerXRef.current - nextX) * attraction;
           nextY += (PLAYER_HIT_Y_CENTER - nextY) * attraction;
@@ -326,15 +337,30 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
             setPlayerX(playerXRef.current);
             setCoinEffect(true);
             window.setTimeout(() => setCoinEffect(false), 350);
+            if (isFallingCoin && magnetActiveRef.current && magnetCoinsLeftRef.current > 0) {
+              const nextMagnetCoinsLeft = magnetCoinsLeftRef.current - 1;
+              magnetCoinsLeftRef.current = nextMagnetCoinsLeft;
+              setMagnetCoinsLeft(nextMagnetCoinsLeft);
+              if (nextMagnetCoinsLeft === 0) {
+                magnetActiveRef.current = false;
+                setMagnetActive(false);
+                if (magnetTimeoutRef.current !== null) window.clearTimeout(magnetTimeoutRef.current);
+                magnetTimeoutRef.current = null;
+              }
+            }
             return respawnItem(item);
           }
           if (item.type === 'magnet') {
             magnetActiveRef.current = true;
+            magnetCoinsLeftRef.current = MAGNET_MAX_COINS;
+            setMagnetCoinsLeft(MAGNET_MAX_COINS);
             setMagnetActive(true);
             if (magnetTimeoutRef.current !== null) window.clearTimeout(magnetTimeoutRef.current);
             magnetTimeoutRef.current = window.setTimeout(() => {
               magnetActiveRef.current = false;
+              magnetCoinsLeftRef.current = 0;
               setMagnetActive(false);
+              setMagnetCoinsLeft(0);
               magnetTimeoutRef.current = null;
             }, MAGNET_DURATION_MS);
             return respawnItem(item);
@@ -370,6 +396,12 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         const nextStage = Math.min(MAX_STAGE, Math.floor(nextScore / 10) + 1);
         if (!maxDifficultyRef.current && nextScore >= MAX_STAGE * 10) {
           directionRef.current = 0;
+          magnetActiveRef.current = false;
+          magnetCoinsLeftRef.current = 0;
+          setMagnetActive(false);
+          setMagnetCoinsLeft(0);
+          if (magnetTimeoutRef.current !== null) window.clearTimeout(magnetTimeoutRef.current);
+          magnetTimeoutRef.current = null;
           itemsRef.current = [];
           itemsToRender = [];
           setGameOver(false);
@@ -377,6 +409,12 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
         } else if (nextStage > stageRef.current) {
           stageRef.current = nextStage;
           setStage(nextStage);
+          magnetActiveRef.current = false;
+          magnetCoinsLeftRef.current = 0;
+          setMagnetActive(false);
+          setMagnetCoinsLeft(0);
+          if (magnetTimeoutRef.current !== null) window.clearTimeout(magnetTimeoutRef.current);
+          magnetTimeoutRef.current = null;
           const stageItems = createStageItems(nextStage);
           itemsRef.current = stageItems;
           itemsToRender = stageItems;
@@ -426,7 +464,9 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     if (magnetTimeoutRef.current !== null) window.clearTimeout(magnetTimeoutRef.current);
     magnetTimeoutRef.current = null;
     magnetActiveRef.current = false;
+    magnetCoinsLeftRef.current = 0;
     setMagnetActive(false);
+    setMagnetCoinsLeft(0);
     setCompleted(false);
     setMaxDifficulty(false);
     setIsStarting(true);
@@ -450,7 +490,9 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     if (magnetTimeoutRef.current !== null) window.clearTimeout(magnetTimeoutRef.current);
     magnetTimeoutRef.current = null;
     magnetActiveRef.current = false;
+    magnetCoinsLeftRef.current = 0;
     setMagnetActive(false);
+    setMagnetCoinsLeft(0);
   };
   const togglePause = () => {
     if (gameOver || completed || isStarting) return;
@@ -466,7 +508,7 @@ export default function AuthSideGame({ onExit }: AuthSideGameProps) {
     <div className="auth-game-best">최고기록 {highScore}</div>
     <div className="auth-game-stage">{maxDifficulty ? 'MAX DIFFICULTY' : `STAGE ${stage} / ${MAX_STAGE}`}</div>
     <div className="auth-game-spawn-line" aria-hidden="true" />
-    {magnetActive && <div className="auth-game-magnet-status" aria-live="polite">🧲 코인 끌어당김</div>}
+    {magnetActive && <div className="auth-game-magnet-status" aria-live="polite">🧲 코인 {magnetCoinsLeft}개 끌어당김</div>}
     {coinEffect && <span className="auth-game-coin-burst" style={{ left: `${playerX}%` }} aria-hidden="true">+1 ✨</span>}
     {items.map((item) => <div
       key={item.id}

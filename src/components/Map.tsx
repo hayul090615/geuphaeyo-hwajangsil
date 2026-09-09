@@ -17,6 +17,7 @@ import type { DirectionsMode, DirectionsRoute } from '../services/directionsServ
 import { getGoingCounts, releaseGoing, touchGoing } from '../services/directionsPresenceService';
 import type { User } from '../types/auth';
 import ToiletReviewModal from './ToiletReviewModal';
+import ToiletRatingSummary from './ToiletRatingSummary';
 import AuthSideGame from './AuthSideGame';
 
 const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY?.trim();
@@ -697,7 +698,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
             <span className="map-data-confidence">{getDataConfidenceLabel(toilet)}</span>{toilet.accessible && <span>휠체어 접근 가능</span>}
           </div>
           {toilet.phone && <a href={`tel:${toilet.phone}`}>{toilet.phone}</a>}
-          {!directionsTarget && <div className="map-place-actions"><button type="button" className="map-review-button" onClick={(event) => { event.stopPropagation(); setReviewTarget(toilet); }}>별점·청결도 리뷰</button><button type="button" className="map-direction-button" onClick={(event) => { event.stopPropagation(); startDirections(toilet); }}>길찾기 시작</button></div>}
+          {!directionsTarget && <div className="map-place-actions">{!toilet.isUserAdded && <><ToiletRatingSummary toiletId={toilet.id} reviewOpen={reviewTarget?.id === toilet.id} /><button type="button" className="map-review-button" onClick={(event) => { event.stopPropagation(); setReviewTarget(toilet); }}>별점·청결도 리뷰</button></>}<button type="button" className="map-direction-button" onClick={(event) => { event.stopPropagation(); startDirections(toilet); }}>길찾기 시작</button></div>}
         </div>
       )}
     </MapMarker>
@@ -1000,7 +1001,7 @@ function LoadedMap({ appKey, toilets, query = '', user, onLoginRequired }: MapPr
                     {!directionsTarget && (
                       <div className="map-place-actions">
                         {toilet.isUserAdded && <><button type="button" className="map-edit-button" onClick={(event) => { event.stopPropagation(); if (!user) return; const name = window.prompt('화장실 이름을 수정하세요.', toilet.name); if (!name?.trim()) return; const address = window.prompt('주소나 위치 설명을 수정하세요.', toilet.address); updateUserToilet(user.id, { id: toilet.id, name: name.trim(), address: address?.trim() || toilet.address, distance: toilet.distance || '', openAllDay: toilet.openAllDay ?? false, accessible: toilet.accessible ?? false, latitude: toilet.lat, longitude: toilet.lng, isUserAdded: true }); setUserToilets(getUserToilets(user.id)); }}>수정</button><button type="button" className="map-delete-button" onClick={(event) => { event.stopPropagation(); if (user && window.confirm('이 화장실을 삭제할까요?')) { deleteUserToilet(user.id, toilet.id.replace(/^mock-/, '')); setUserToilets(getUserToilets(user.id)); setSelectedToiletId(null); } }}>삭제</button></>}
-                        {!toilet.isUserAdded && <button type="button" className="map-review-button" onClick={(event) => { event.stopPropagation(); setReviewTarget(toilet); }}>별점·청결도 리뷰</button>}
+                        {!toilet.isUserAdded && <><ToiletRatingSummary toiletId={toilet.id} reviewOpen={reviewTarget?.id === toilet.id} /><button type="button" className="map-review-button" onClick={(event) => { event.stopPropagation(); setReviewTarget(toilet); }}>별점·청결도 리뷰</button></>}
                         <button type="button" className="map-direction-button" onClick={(event) => { event.stopPropagation(); startDirections(toilet); }}>길찾기 시작</button>
                       </div>
                     )}

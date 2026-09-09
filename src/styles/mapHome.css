@@ -399,6 +399,7 @@
 }
 
 .map-place-actions { display: grid; gap: 6px; margin-top: 8px; }
+.map-place-info .map-rating-summary { text-align: left; color: #d94b3b; font-size: 11px; font-weight: 600; line-height: 1.5; }
 .map-review-button { border: 1px solid #ffb7af; border-radius: 7px; padding: 7px 9px; background: #fff7f5; color: #d94b3b; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
 .review-modal-backdrop { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(23, 32, 42, .56); }
 .review-modal { width: min(560px, 100%); max-height: min(760px, 90vh); overflow-y: auto; padding: 25px; border-radius: 20px; background: #fff; box-shadow: 0 24px 70px rgba(0, 0, 0, .25); }
